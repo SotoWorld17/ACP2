@@ -1,0 +1,447 @@
+---
+title: "AC. Introducción breve a Caret"
+author: "Laboratorio de Aprendizaje Computacional. Profesores: Javier G. Marín y Juan A. Botía (juanbot@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# ¿Qué necesitamos para compilar nuestro documento?
+
+En esta sesión de prácticas haremos uso de los paquetes MLMetrics, Caret y pROC.
+
+# Introducción
+
+En las sesiones de laboratorio anteriores hemos visto diferentes técnicas orientadas a conseguir que nos familiaricemos con los datos antes de comenzar a aplicar algoritmos de machine learning. 
+
+En el ámbito de esta asignatura, __aplicamos técnicas de estadística pero sobre todo machine learning (e.g. árboles de decisión, bayes naive, reglas de decisión, redes neuronales, ensembles) con el objeto de realizar aprendizaje supervisado, y dentro del supervisado bien clasificación bien regresión__. Por tanto, estamos respondiendo a la siguiente pregunta
+
+> Dado un conjunto de aprendizaje $D$,  de $m$ ejemplares, definidos por una lista de $n$ predictores y una variable de respuesta $y$, $$D=\{(x_i=<x_{1i},x_{2i},\ldots,x_{ni}>,y_i)\mbox{, }1\leq i\leq m\}$$ ¿Puedo encontrar un modelo $h(\theta)$ que a partir de un proceso de aprendizaje sobre $D$, ajuste los parámetros $\theta$ del modelo $h$ tal que sea posible predecir el valor de la variable de respuesta $y$ para ejemplares nuevos?
+
+Vamos al usar la herramienta Caret para ello. Caret ha sido desarrollada íntegramente por Max Kuhn <https://github.com/topepo> y es la integración en un framework común de una serie de paquetes de R dedicados a implementar diversas técnicas de machine learning. En los siguientes apartados vamos a ver cómo funciona de forma básica. La documentación de Caret puede consultarse aquí <https://topepo.github.io/caret/>.
+
+
+
+# Entrenando el modelo y ajustando hiperparámetros
+
+Ahora entramos en la parte de entrenar modelos potencialmente útiles para predecir la variable de respuesta $y$. En todo proceso de este tipo, los pasos a ejecutar son los siguientes
+
+*  Paso 1. Decidir qué algoritmo, o algoritmos, de Machine Learning utilizar.
+*  Paso 2. Encontrar cuales son los mejores valores a dar a los hiper-parámetros de dichos algoritmos, cuando los hacemos trabajar sobre nuestro problema.
+*  Paso 3. Obtener el correspondiente modelo $h_a$, para cada algoritmo $a$, dadas las posibles combinaciones de valores para los hiper-parámetros, que hemos determinado en el Paso 2
+*  Paso 4. Comparar los modelos obtenidos con cada algoritmo y decidir con cual nos quedamos.
+
+Nótese que hay que distinguir entre algoritmo y modelo. 
+
+* Como sabemos, un **algoritmo** de ML parte de los datos de aprendizaje $D$ y construye una hipótesis predictiva $h$, sobre ejemplares del tipo que aparece en $D$. 
+
+* Esa hipótesis predictiva es lo que denominamos modelo.
+
+* Ejemplos: 
+  + el algoritmo de random forests genera un random forest, los parámetros del random forest generado es el conjunto de árboles generado y su estructura
+  + el algoritmo backpropagation ajusta los parámetros de una red neuronal. La red neuronal es el modelo generado y sus parámetros son los pesos de los arcos entre los nodos y sus funciones de activación.
+  * el algoritmo de ajuste por mínimos cuadrados genera un modelo de regresión y los parámetros de dicho modelo son el intercepto y los coeficientes que multiplican a los predictores.
+  
+  
+  
+
+Además, hay que distinguir entre hyper-parámetros del algoritmo y parámetros del modelo. 
+
+* Los hiper-parámetros del algoritmo se refieren a los argumentos que la llamada al algoritmo $a$, de la API correspondiente, acepta como entrada y que están destinados a configurar su comportamiento a la hora de construir $h$. 
+
+* Los parámetros $\theta$ del modelo $h$, son los que instancian el modelo, originalmente dispuesto en forma de plantilla (e.g. un árbol de decisión vacío, una red neuronal sin nodos ni pesos), para convertirlo en un objeto particular capaz de predecir (e.g. un árbol de decisión con 3 niveles, 9 nodos, y determinados tests en cada nodo, o una red neuronal multi-layer perceptron con 4 nodos de entrada, una capa oculta de 10 nodos y 3 nodos a la salida ajustados con softmax, además de los correspondientes pesos entre nodos de la red).
+
+Pues bien, dado un algoritmo $a$ y un conjunto de datos $D$, Caret se encarga de buscar unos valores para los hiper parámetros $hp$ de $a$ tal que las medidas de calidad del modelo $h(\theta)$ obtenido para dichos hiperparámetros, sean de calidad más que aceptable.
+
+
+
+
+## Algoritmos de Machine Learning que proporciona Caret
+
+Caret proporciona, en el momento de escribir este tutorial , 238 algoritmos de Machine Learning usables según la estrategia que hemos descrito en la sección anterior. 
+
+Se puede ver un listado de todos ellos con el comando `names(getModelInfo())`.  También se puede encontrar información adicional en 
+<http://topepo.github.io/caret/available-models.html>.
+
+Vamos a utilizar algunos de ellos para hacer las pruebas de los siguientes apartados. En particular probaremos:
+
+|Modelo    | Lineal | Tipo     | Descripción|
+|----------|--------|----------|------------|
+|lda       |  si    | Sencillo | Linear Discriminant Analysis                                           |
+|glm       | si     | Sencillo | Generalized Linear Model                                               |
+|rpart     | no     | Sencillo | El algoritmo CART de árboles de decisión de clasificación y regresión. |
+|knn       | no     | Sencillo | Un algoritmo de clustering adaptado para hacer clasificación.          |
+|svmRadial | no     | Complejo | Un algoritmo de Support Vector Machines |
+|rf        | no     | Complejo | Random Forests, un algoritmo que combina múltiples árboles de regresión. |
+|gbm       | no     | Complejo | Stochastic Gradient Boosting |
+|nnet      | no     | Complejo | Neural Networks |
+
+Caret proporciona un interfaz común para todos esos métodos y entrenar cualquier de ellos es tan sencillo como invocar comandos como estos, para ejemplos de discriminantes lineales, modelos de regresión o un árbol de decisión sencillo (el código es un ejemplo ilustrativo, no es ejecutable)
+
+```{r,eval=F,warning=F,message=F}
+modelo.lda = train(predictores, valores.Conocidos, method='lda')
+modelo.glm = train(predictores, valores.Conocidos, method='glm')
+modelo.rpart = train(predictores, valores.Conocidos, method='rpart')
+```
+
+## Predicción de diabetes en los indios Pima
+
+### Particionando los datos
+
+Vamos a ver un ejemplo con el viejo conocido $D$ de los indios Pima
+```{r}
+library(caret)
+library(mlbench)
+data("PimaIndiansDiabetes")
+# Usamos el dataset PimaIndiansDiabetes y hacemos una partición al 80%
+pima.Datos.Todo = PimaIndiansDiabetes
+dim(pima.Datos.Todo)
+pima.Var.Salida.Usada = c("diabetes")
+pima.Vars.Entrada.Usadas = setdiff(names(pima.Datos.Todo),pima.Var.Salida.Usada)
+```
+
+Acabamos de cargar las librerías, y vamos a utilizar una nomenclatura para las variables de tal forma que el id de la variable refleje los pasos ejecutados hasta llegar a ella. 
+
+Lo primero que vamos a hacer es preparar los datos para crear un modelo a partir de una parte de los datos (lo que se denomina training) y usar la otra parte para estimar la capacidad predictiva del modelo (lo que llamamos test). La función `createDataPartition` genera unos índices que nos permiten dividir `pima.Datos.Todo`. 
+
+```{r}
+set.seed(1234)
+pima.TrainIdx.80<- createDataPartition(pima.Datos.Todo[[pima.Var.Salida.Usada]],
+                                       p=0.8, #Genera un 80% para train, 20% para test
+                                       list = FALSE, #Dame los resultados en una matriz
+                                       times = 1) #Genera solamente una partición 80/20
+str(pima.TrainIdx.80) #Como podemos ver, es una matriz de una columna, con 615 ejemplares
+pima.Datos.Train<-pima.Datos.Todo[pima.TrainIdx.80,]
+pima.Datos.Test<-pima.Datos.Todo[-pima.TrainIdx.80,]
+
+```
+
+Concretamente, en este ejemplo utilizamos el método `createDataPartition` para dividir el cjto. de datos $D$ en una (i.e. `times=1`) parte para entrenamiento y otra para validación. Esta estrategia básica se denomina `hold-out` (i.e. dejar fuera del training una parte de los datos). 
+
+### Invocando el traninig en diferentes algoritmos
+
+Creamos a continuación, modelos para `lda`, `glm`, `rpart` y `rf` haciendo uso del método `train()` de Caret que necesita los predictores de entrenamiento y los valores de entrenamiento correspondientes para la variable de salida. Nótese que usamos `system.time` para poder hacernos una idea de cuánto tarda un entrenamiento sencillo para cada algoritmo.
+
+
+```{r}
+
+system.time(
+  pima.modelo.bstrp25.lda<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                                 pima.Datos.Train[[pima.Var.Salida.Usada]], 
+                                 method='lda'))
+system.time(
+  pima.modelo.bstrp25.glm<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                                 pima.Datos.Train[[pima.Var.Salida.Usada]],
+                                 method='glm'))
+
+system.time(
+  pima.modelo.bstrp25.rpart<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                                   pima.Datos.Train[[pima.Var.Salida.Usada]],
+                                   method='rpart'))
+
+system.time(
+  pima.modelo.bstrp25.rf<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                                pima.Datos.Train[[pima.Var.Salida.Usada]],
+                                method='rf'))
+
+```
+
+Vemos que la implementación `rf` del algoritmo Random Forest tarda al menos 20 veces más que el segundo más lento. Nótese además que 
+
+* para cada algoritmo podemos tener implementaciones distintas en paquetes distintos. Por tanto, asumir que `rf` es muy lento no implica necesariamente que Random Forest no pueda usarse más eficientemente en otro paquete R diferente. Obviamente, este razonamiento vale para cualquier otro algoritmo. 
+
+* Y frecuentemente vamos al encontrar el mismo algoritmo implementado en diferentes paquetes, dentro de Caret.
+
+### ¿Cómo inspecciono los resultados?
+
+Una vez hecho esto, se debe tener en cuenta que el resultado del modelo final ajustado de dichos modelos, tras evaluar varios hiper-parámetros, se puede visualizar rápidamente con el comando `print()`  que muestra 
+
+* el nombre del modelo, 
+
+* información sobre los datos de entrenamiento, 
+
+* si ha existido preproceso (si se le indicó a `train()` en el parámetro `preProcess`), 
+
+* el tipo de remuestreo utilizado con los respectivos tamaños de éstos y 
+
+* el resultado de la evaluación de las distintas configuraciones de hiper-parámetros usando dichos remuestreos. 
+
+* Se muestran dos medidas típicas de clasificación `Accuracy` y `Kappa`. 
+
+* Se informa de cual de las medidas se utilizó para decidir la mejor configuración.
+
+* Por último, incluye incluye la configuración final de hiper-parámetros utilizada en el modelo final
+
+Si preguntamos por el contenido de, por ejemplo, el modelo generado por `rpart` obtenemos
+
+```{r}
+pima.modelo.bstrp25.rpart
+```
+
+¿Qué es lo que vemos aquí? El algoritmo es `CART`, ejecutado sobre 615 ejemplares, 8 predictores y dos clases en la variable de respuesta. La estimación de la bondad de nuestro algoritmo se ha realizado mediante bootstrapping (i.e. muestreo con remplazamiento sobre 25 conjuntos diferentes). 
+
+Y vemos que hay un único hiperparámetro para `CART`, `cp` que indica el compromiso entre cantidad de (p)oda del algoritmo y (c)omplejidad del árbol. Como podemos ver, Caret ha usado tres valores diferentes para `cp`, ¿por qué tres? Por defecto, si el número de parámetros del algoritmo es $p$, se van a probar $3^p$ combinaciones diferentes de parámetros (ver sección 5.3 de <https://topepo.github.io/caret/>). Al ser $p=1$, esos son los tres posibles valores de $cp$ generados por Caret.
+
+__Por tanto, si tenemos 25 repeticiones, por tres valores de `cp` diferentes, el algoritmo CART se ha ejecutado 75 veces!!__
+
+Nótese que como los modelos `glm` y `lda` no tienen hiper-parámetros la información sobre configuraciones no aparece.
+
+```{r}
+pima.modelo.bstrp25.lda
+```
+
+Es fácil comprobar que los resultados son la evaluación hecha sobre el total de los remuestreos puesto que si se calcula, p.e., el Accuracy (exactitud) sobre el conjunto de datos de entrenamiento y/o test usándo el modelo final nos aparece un valor distinto.
+
+```{r}
+MLmetrics::Accuracy(predict(pima.modelo.bstrp25.lda,
+                            pima.Datos.Train[pima.Vars.Entrada.Usadas]),
+                    pima.Datos.Train[[pima.Var.Salida.Usada]])
+MLmetrics::Accuracy(predict(pima.modelo.bstrp25.lda,
+                            pima.Datos.Test[pima.Vars.Entrada.Usadas]),
+                    pima.Datos.Test[[pima.Var.Salida.Usada]])
+```
+
+
+
+## Encontrar los mejores hiper-parámetros y ajustar modelo final
+
+Ya hemos definido anteriormente los hiper parámetros de un algoritmo de machine learning. La mayoría de algoritmos  tienen hiper-parámetros que afectan modifican su comportamiento y la forma del resultado final.
+
+Para conocer qué hiper-parámetros (a los hiper-parámetros, en la terminología de Caret, se les llama model parameters) son directamente accesibles por Caret se puede usar el comando `modelLookup()`.
+
+```{r}
+#Ejemplo para Stochastic gradient boosting
+#Algoritmo gradient boosting machine
+modelLookup(("gbm"))
+```
+
+Este comando nos da información sobre 
+
+* los hiperparámetros a ajustar, su nombre, 
+
+* si el modelo/algoritmo se puede usar para clasificación y/o regresión y
+
+* si a la salida puede generar probabilidad en lugar del valor de clase cuando se clasifica.
+
+En el caso de `gbm` se puede ver que tiene cuatro parámetros controlables directamente por Caret: `n.trees`, `interaction.depth`, `shrinkage` y `n.minobsinnode`. Una manera alternativa es ir a la página de los modelos disponibles de Caret <http://topepo.github.io/caret/available-models.html> y buscar `gbm`. 
+
+Para saber qué es cada uno de dichos parámetros debe irse a la documentación del paquete que contiene ese modelo (en este caso el paquete `gbm` cuyo `vignette` se puede conseguir en <https://cran.r-project.org/web/packages/gbm/gbm.pdf>) y localizar la función que realiza el entrenamiento de esa implementación del modelo (en este caso la función `gbm.fit()`). 
+
+Es importante comprobar que muchas veces los modelos tienen más hiper-parámetros posibles que los que Caret pone a disposición directa del usuario de la librería (p.e. en `gbm` tendríamos, además de los arriba expuestos y accesibles directamente a través de Caret, otros hiper-parámetros adicionales como `distribution` o `bag.fraction`). Más adelante veremos como podemos acceder a ellos si también quisieramos controlarlos.
+
+Cuando utilizamos `train()` las fases de Caret son
+
+* Paso 1: hace primero una optimización de los valores de los hiper-parámetros, usando parte de datos de entrenamiento como conjunto de validación siguiendo alguno de los métodos de remuestreo 
+
+* Paso 2: una vez encontrada la mejor combinación o configuración de ellos, hace un modelo final. Este modelo final lo entrena utilizando todos los datos de entrenamiento proporcionados (lo que llama final model). 
+
+
+
+![Algoritmo básico de Caret para generar un modelo a partir de un algortimo y un dataset de aprendizaje supervisado](https://topepo.github.io/caret/premade/TrainAlgo.png)
+
+
+
+### El comando trainControl
+
+Aunque el proceso de entrenamiento es automático se pueden controlar muchos de sus elementos. Por ejemplo, la técnica por defecto de remuestreo es "bootstrap" (como vimos al mostrar `pima.modelo.rpart`), pero se puede cambiar y utilizar otra, como la popular "repeatedcv" (Crosvalidación de k pliegues con repetición). Esto se consigue con el parámetro `trControl` que se construye con la función `trainControl()`.
+
+Por ejemplo
+
+```{r,message=F,warning=F}
+pima.TrainCtrl.3cv10 <- trainControl(## Crosvalidación de 10 pliegues
+  method = "repeatedcv",
+  number = 10,
+  ## con 3 repeticiones
+  repeats = 3,
+  # Que muestre información mientras entrena
+  verboseIter=T)
+
+pima.modelo.3cv10.lda<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                             pima.Datos.Train[[pima.Var.Salida.Usada]],
+                             method='lda', trControl=pima.TrainCtrl.3cv10)
+
+pima.modelo.3cv10.glm<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                             pima.Datos.Train[[pima.Var.Salida.Usada]],
+                             method='glm', trControl=pima.TrainCtrl.3cv10)
+
+pima.modelo.3cv10.rpart<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                               pima.Datos.Train[[pima.Var.Salida.Usada]],
+                               method='rpart', trControl=pima.TrainCtrl.3cv10)
+
+pima.modelo.3cv10.rf<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                            pima.Datos.Train[[pima.Var.Salida.Usada]],
+                            method='rf', trControl=pima.TrainCtrl.3cv10)
+```
+
+El comando `trainControl()` se puede utilizar también para tener un control más fino del entrenamiento. En realidad tiene un número considerable de parámetros con los que controlar muchos elementos. Mencionaremos algunos de los más útiles a continuación.
+
+## Sobre-entrenamiento, definición
+
+Uno de los principales problemas con los que nos podemos encontrar a la hora de encontrar el mejor conjunto de hiperparámetros es caer en el sobre-entrenamiento, que sucede cuando un modelo se adapta demasiado a los datos y captura tendencias individuales que no generalizan a datos nuevos datos (básicamente terminan memorizando los datos individuales más que capturando los patrones comunes que relacionan a grupos de ellos).
+
+Una definición formal de overfitting de un modelo $h$ (entiéndase el accuracy de un modelo como la fracción de veces que un modelo acierta en la predicción, de entre todas las que se le pregunta)
+
+> dado un conjunto de datos $D$, con sus correspondientes predictores y variable de respuesta, al que dividimos en training y test $D_{tr}$ y $D_{te}$, se dice que una hipótesis/modelo $h$ construida sobre $D_{tr}$ sobreajusta los datos en $D$ si existe una $h`$ alternativa tal que el accuracy de $h$ en $D_{tr}$ es mejor que el de $h´$, sin embargo, el accuracy de $h'$ en $D_{te}$ es mejor que el de $h$. 
+
+### ¿Cómo detectar el overfitting?
+
+Por fortuna este efecto se puede intuir 
+
+> cuando nuestro modelo muestra muy buenos resultados en el cjto. de entrenamiento pero muy malos en los datos de test.
+
+Sobre esto, se ha de destacar
+
+
+* Téngase en cuenta que los resultados en los datos de entrenamiento suelen ser mejores que en los datos de test. Al fin y al cabo, los datos de entrenamiento se han usado para eso precisamente. Sin embargo, los de test no, por tanto, se lo estamos poniendo más difícil al modelo con dichos datos. Sin embargo, el overfitting se da cuando los resultados son muy malos, no simplemente peores, por ejemplo en un problema de clasificación binaria, seguramente tendríamos overfitting cuando el accuracy de training es del 90% (0.9) y el accuracy en los datos de test del 60% solamente.
+
+* Algunos hiperparámetros son responsables de que se llegue a esa situación de sobre-entrenamiento (p.e. el número de splits de los modelos de árboles, o el parámetro k, de los clusterings) y escoger los hiper-parámetros adecuados es fundamental para tener un buen modelo final (y ocupará gran parte del trabajo computacional).
+
+* La manera más efectiva de no incurrir en overfitting es asegurarnos de que el tamaño de nuestros modelos es considerablemente más pequeño que el tamaño de nuestros datos. Por ejemplo, es difícil que un modelo de regresión se sobreajuste a los datos ya que el número de parámetros es el número de predictores de nuestro datataset más el intercepto.
+
+## Formas de muestreo que ofrece trainControl
+
+Dado que 
+
+* no podemos hacer uso del conjunto test cuando entrenamos (si lo hiciésemos se caería también en sobre-entrenamiento) y 
+
+* necesitamos conjuntos de comprobación para detectar el sobre-entrenamiento, y 
+
+* debemos realizar bastantes pruebas sobre cada conjunto de hiper-parámetros para poder tener una estimación aceptable sobre su "adecuación" para el problema que estamos resolviendo
+
+necesitamos usar algún método de remuestreo (resampling).
+
+Los métodos de remuestreo permiten 
+
+* introducir cierta variación en los conjuntos de entrenamiento (lo que permite estimar mejor el comportamiento general de una configuración particular de hiper-parámetros) 
+
+* proporciona conjuntos de comprobación (validación) para hacer dicha estimación de como será el rendimiento del modelo sobre ejemplos no vistos. 
+
+* También permite detectar si hay mucha diferencia entre resultados de entrenamiento y validación y desestimar configuraciones con pobre validación (para prevenir el overfitting).
+
+Caret proporciona varias formas de remuestreo que pasamos a describir.
+
+Cada una de los siguientes métodos se selecciona con el parámetro `method` del comando `trainControl()`.
+
+* K-fold Crossvalidation: En esta técnica se dividen los datos en $K$ bloques diferentes (pliegues) de más o menos igual tamaño (preferentemente división estratificada). Después se deja uno de ellos a un lado como conjunto de validación y se entrena el modelo con los $K-1$ restantes como datos de entrenamiento. Se evalúa el modelo con el conjunto de validación. Luego se repite el proceso con distintos conjuntos como bloque de validación y se obtienen $K$ modelos con $K$ resultados de validación. El rendimiento se basa en las predicciones hechas sobre esos resultados de validación. Lo más común es que $K$ sea 5 o 10. 
+
+* El método repeated K-fold CV lo que hace es repetir varias veces el proceso y tener varias versiones de los pliegues. Es el método más frecuente.
+
+* Bootstrapping: Con bootstraping se utiliza una muestra aleatoria con reemplazamiento. La muestra aleatoria es del mismo tamaño que el conjunto original. Como las muestras se pueden seleccionar más de una vez se puede calcular que cada dato original tiene un 63.2% de probablilidades de estar, al menos una vez, en el conjunto seleccionado. Los datos que no son finalmente seleccionados ni una sola vez se utilizan como conjunto de validación. Este proceso se repite varias veces (entre 30 y 100). Es el método por defecto de Caret. Tiene algo menos de varianza que k-fold pero algo de sesgo no-zero.
+
+* Leave Group Out: En este método se crean aleatoriamente un grupo de entrenamiento (p.e. el 80% del conjunto original) y otro de validación (el 20% restante) cada vez. El proceso se repite entre 20 y 100 veces. Los grupos se escogen de manera estratificada. Tiene algo menos de varianza que k-fold pero algo de sesgo.
+
+
+## Selección de las medidas de rendimiento
+
+En los ejemplos anteriores hemos visto que el modelo final se escogía con la medida de evaluación `Accuracy`, pero se puede controlar mediante `trainControl()` las medidas que se utilizan para medir el rendimiento del modelo. 
+
+En realidad, lo que hace Caret, cuando evalúa un modelo, es utilizar lo que denomina una `summary function` (una función que se puede especificar mediante el parámetro `summaryFunction` de `trainControl()`), y que calcula diversas medidas de rendimiento. A `train()` se le indica cual de las medidas de las summary function debe usar para escoger el modelo final mediante el parámetro `metric` de `train()`. 
+
+La summary function que utiliza por defecto Caret se llama `postResample()`, a la que se le pasan  dos vectores de igual longitud con los valores predichos y los valores verdaderos (observados). 
+
+### Medidas de error/calidad para regresión univariable en Caret
+
+Si son numéricos, es decir, si el problema es de regresión, calcula 3 medidas: 
+
+* la media cuadrática del error ("RMSE" Root Mean Squared Error), $\sqrt{\frac{1}{n}\sum_i(x_i-x_i')^2}$
+
+* el $R^2$ simple ("Rsquared"), a partir de la regresión lineal y
+
+* la media absoluta del error (MAE Mean Absolute Error), $\frac{1}{n}\sum_in |x_i-x_i'|$
+
+Todas ellas son medidas que se utilizan con frecuencia para evaluar el rendimiento de la regresión.
+
+### Medidas de error/calidad para clasificación en Caret
+
+Caret detecta que un problema es de clasificación de forma autómatica: i.e., si la variable a predecir es de tipo factor.
+
+En ese caso, por defecto calcula 2 medidas: La exactitud ("Accuracy") y el coeficiente Kappa de Cohen ("Kappa"). 
+
+* El accuracy: puede dar problemas con clases desbalanceadas (los modelos tienden a ignorar clases con pocos ejemplos) por lo que en esos casos es aconsejable usar el coeficiente Kappa, o un accuracy balanceado
+
+* El valor de Kappa: no existe acuerdo en categorizar los valores de kappa para interpretar como de "bueno" es el resultado dado un valor. Algunos autores dicen que excelente si es mayor que 0.75, y pobre por debajo de 0.4.
+
+Como hemos mencionado, para seleccionar cual de las medidas de entre las calculadas por la función del parámetro `summaryFunction` se utiliza para seleccionar el modelo se utiliza el parámetro `metric` de `train()` (p.e. `metric = "Kappa"`), indicando en el parametro `maximize` (también de `train()`) si es una medida a maximizar (`maximize = T`) o minimizar (`maximize=F`). El valor por defecto es maximizar.
+
+Veamos un ejemplo con Support Vector Machines:
+
+```{r}
+
+pima.modelo.3cv10.svm.Kappa<-train(pima.Datos.Train[pima.Vars.Entrada.Usadas],
+                                   pima.Datos.Train[[pima.Var.Salida.Usada]],
+                                   method='svmRadial', 
+                                   metric = "Kappa",
+                                   trControl=pima.TrainCtrl.3cv10)
+pima.modelo.3cv10.svm.Kappa
+```
+
+
+Como se puede suponer se le puede pasar una función definida por el usuario para que se utilicen otras medidas. Caret proporciona varias funciones alternativas que se pueden utilizar. Por ejemplo tiene `twoClassSummary()` que calcula, para problemas de clasificación de dos clases, la Receiver Operating Characteristic ("ROC"), la sensibilidad ("Sens") y la especifidad ("Spec").
+
+
+Se podría dar más valor a una u otra medida si no queremos que cuesten igual los falsos positivos o los falsos negativos. 
+
+Si se valora más la sensibilidad buscaríamos modelos donde no se nos escapen casos positivos (aunque aumentemos los falsos positivos) y si se valora más la especificidad se buscarían modelos donde no se nos escapen casos negativos (aumentando normalmente los falsos negativos). 
+
+Habría que encontrar un trade-off entre ambos valores (si se hace un 50% tenemos el típico caso en que apreciamos por igual un verdadero positivo como un verdadero negativo). 
+
+En los casos extremos se llegan a clasificadores que siempre clasifican los datos como positivos (lo que da sensibilidad 1 pues no se nos escapa ningún positivo verdadero, ¡decimos que todos son verdaderos!) o clasifican siempre como negativo (lo que da especificidad 1 pues no se nos escapa ningún verdadero negativo). 
+
+__No trates de maximizar alguna de dichas medidas por separado sino más bien una combinación de ellas (que es lo que hace ROC)__.
+
+
+# Lidiando con más de dos clases
+
+En la práctica 1 nos enfrentamos a un problema de varias clases. Caret también proporciona una función `multiClassSummary()` que calcula varias medidas para clasificación de múltiples clases. Además de exactitud y Kappa calcula la sensibilidad y especificidad medias (hace la media de las medidas de una clase frente al resto, p.e. si hay 3 clases, calcula la sensibilidad de la clase 1 frente a la clase 2+3, la clase 2 frente a 1+3, y la clase 3 frente a 1+2 y luego hace la media), la precisión media, etc.
+
+Vemos un ejemplo de esta función con el dataset iris.
+
+```{r}
+data(iris)
+iris.Datos.Todo<-iris
+iris.Var.Salida.Usada<-c("Species")
+iris.Vars.Entrada.Usadas<-setdiff(names(iris.Datos.Todo),
+                                  iris.Var.Salida.Usada)
+iris.Vars.Entrada.Escaladas<-iris.Vars.Entrada.Usadas
+
+
+iris.trainIdx.80<- createDataPartition(iris.Datos.Todo[[iris.Var.Salida.Usada]],
+                                       p=0.8,
+                                       list = FALSE,
+                                       times = 1)
+iris.Datos.Train<-iris.Datos.Todo[iris.trainIdx.80,]
+iris.Datos.Test<-iris.Datos.Todo[-iris.trainIdx.80,]
+
+iris.TrainCtrl.3cv10.mltClssSmmry <- trainControl(
+  ## Crosvalidación de 10 pliegues
+  method = "repeatedcv",
+  number = 10,
+  ## con 3 repeticiones
+  repeats = 3,
+  # Esta vez mejor sin verbose
+  verboseIter=F,
+  summaryFunction = multiClassSummary
+)
+
+
+iris.modelo.3cv10.svm.mltClssSmmry<-train(iris.Datos.Train[iris.Vars.Entrada.Usadas],
+                                          iris.Datos.Train[[iris.Var.Salida.Usada]],
+                                          method='svmRadial',
+                                          trControl=iris.TrainCtrl.3cv10.mltClssSmmry)
+iris.modelo.3cv10.svm.mltClssSmmry
+```
+
+Para ver otras summary functions disponibles se puede mirar la documentación de Caret en <http://topepo.github.io/caret/measuring-performance.html#measures-for-class-probabilities>
+
+
+
