@@ -1,0 +1,151 @@
+---
+title: "Práctica 2"
+author: Apredizaje Computacional, Grado en Ingeniería Informática, 2023/2024. Universidad de Murcia. Juan A. Botía
+date: "`r Sys.Date()`"
+output:
+  
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+Esta es la segunda práctica y final de la asignatura de Aprendizaje Computacional de 1er cuatrimestre de cuarto curso del Grado en Informática de la Universidad de Murcia para el curso 2023/2024.
+
+# El problema
+
+Tenemos un dataset con una entrada para una canción que indica, sobre todo, su nivel de popularidad a diario. El dataset se actualiza diariamente, e incluye, en cada actualización, las 50 canciones de spotify más populares, analizadas en un contexto de 70 paises. El dataset, accesible [aquí](https://aulavirtual.um.es/access/content/group/3891_G_2023_N_N/Laboratorios/spoti.csv.zip), incluye, de esta forma, un total de 3168 canciones, en 105669 entradas diferentes y descritas mediante 25 atributos. El conjunto de atributos es el siguiente
+
+* spotify_id: el identificador de la canción.
+
+* name: el título de la canción.
+
+* artists: el nombre del artista o artistas detrás de la canción.
+
+* daily_rank: el ranking de la canción en el día correspondiente, dentro del top 50.
+
+* daily_movement: el cambio de posición en el ranking, comparado con el día previo.
+
+* weekly_movement: el cambio de posición en el ranking comparado con la semana anterior.
+
+* country: un código correspondiente al país del que se originó la entrada de la canción en el top 50.
+
+* snapshot_date: fecha en la que se recogió el dato correspondiente a la entrada en la tabla.
+
+* is_explicit: si la canción contiene lenguaje explícito o no.
+
+* duration_ms: duración de la canción en milisegundos.
+
+* album_name, album_release: nombre del album, fecha de publicación.
+
+* danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness: parámetros sobre el propio sonido de la canción que indican si es bailable, el nivel de energía, la clave en la que está interpretada, el volumen a la que fue grabada en dbs, si la canción está en clave mayor o menor, el nivel de presencia de palabra hablada en la canción, la calidad acústica de la canción, y su predominio de la instrumentación con respecto a lo vocal, respectivamente.
+
+* liveness: si se grabó en directo.
+
+* valence: medida del positivismo transmitido por la canción.
+
+* tempo: el número de beats por minuto de la canción.
+
+* time_signature: nivel en una escala de ritmo musical.
+
+* popularity: medida del nivel de popularidad de la canción, correspondiente a la fecha en la que se generó el registro de entrada.
+
+# Trabajo a realizar
+
+Se pide completar los siguientes apartados, a la hora de resolver la práctica.
+
+## Apartado A: Descripción del conjunto de datos (1.5 puntos)
+
+Describe brevemente el conjunto de entrenamiento. 
+
+Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber: 
+(1) predictores numéricos que, a priori, no tienen relación alguna con `popularity` y por tanto no son útiles para su predicción. (2) Predictores numéricos que pueden aportar algo a la predicción de `popularity` y predictores categóricos (3) relacionados con `popularity` y (4) no relacionados. 
+Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.
+
+
+## Apartado B: Estrategias de preparación de los datos (2 puntos)
+
+Respóndase a las siguientes preguntas en relación a la preparación de datos
+
+* ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?
+
+* ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?
+
+* ¿Cómo podría aprovecharse el carácter secuencial de los datos?
+
+
+## Apartado C: Algoritmos de aprendizaje (5.5 puntos)
+
+En esta práctica vamos a poner a competir varios algoritmos con el objeto de quedarnos con el mejor. Por tanto, se pide **identificar al menos tres algoritmos a usar de entre los disponibles en Caret**, para realizar los análisis comparativos de entre los que obtener al final el mejor modelo posible. Cada algoritmo debe pertenecer a un paradigma de aprendizaje diferente. Paradigmas y algoritmos de ejemplo son un algoritmo de red neuronal MLP (Multi-layer perceptron), árboles de decisión (por ejemplo CART o random forest), ensamblajes (boosting, bagging, stacking, etc.), clasificadores lineales (e.g. linear discriminant analysis), algoritmos de la familia de naive bayes, etc. **En esta práctica, hay que considerar obligatoriamente la familia de algoritmos de random forest y de deep learning**. Al menos hay que usar un algoritmo de cada uno de estos dos paradigmas. Al menos un tercer debe pertenecer a un tercer paradigma. Si se usan más de tres, de el cuarto en adelante pueden de un paradigma ya usado.
+
+Como hemos dicho, uno de los paradigmas obligatorios a considerar es el de *random forests*. Por ejemplo, mediante el paquete `ranger` disponible en Caret (otros paquetes son `extraTrees`, `randomForest` y `Rborist`). Se elegirá al menos un algoritmo de entre estos y se presentará un proceso de optimización del modelo final basado en los hiperparámetros del algoritmo o algoritmos en cuestión.
+
+El otro paradigma obligatorio es *deep learning*. Vamos a considerar implementaciones de referencia las que nos encontramos en [Keras](https://keras.rstudio.com/). De entre los cuatro algoritmos disponibles en Caret, basados en el paquete keras, `mlpKerasDropout`, `mlpKerasDecay`, `mlpKerasDropoutCost`, `mlpKerasDecayCost`, se elegirá uno o más y se presentará un proceso de optimización del modelo basado en el número de capas y de nodos por capa, además de las estrategias de optimización de paraámetros del modelo incluidas por cada algoritmo.
+
+Se  ha de demostrar que se conoce mínimamente cada uno de los algoritmos planteados. Por tanto, se pide para cada uno de los algoritmos elegidos,
+
+* **Funcionamiento**: explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo. (0.5 puntos)
+
+* **Requisitos**: Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo. (1 puntos)
+
+* **Descripción de hiperparámetros**: Identificar y explicar cada uno de sus parámetros de configuración (1 punto)
+
+* **Grid hiperparámetros**: Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar. (2 puntos)
+
+* **Resultados**: describir los resultados del algoritmo (1).
+
+## Elección del modelo final (1 punto)
+
+Para la elección del modelo final, entre todas las técnicas probadas en el apartado C, se seguirá el método basado en la función `caret::resamples()` explicado en la sección 5.8.2 de la documentación de Caret (ver apartado [5.8](https://topepo.github.io/caret/model-training-and-tuning.html#exploring-and-comparing-resampling-distributions)).
+
+
+# Sobre el material a entregar
+
+Se require, básicamente, un fichero Markdown fuente junto con el compilado.
+Recuérdese que el fichero Markdown ha de ejecutarse en su totalidad de manera autónoma, desde RStudio mediante Knit para generar un report de la práctica en HTML. La única entrada que se espera al proceso de compilación es el fichero de datos suministrado en la Práctica 1. Sin embargo, se aceptarán ficheros que almacenen resultados temporales con `save/readRDS` como se indica abajo. 
+
+> La primera línea de código deberá destinarse a definir la variable con la ruta de directorio en donde se encuentran los ficheros usados en la práctica, cualesquiera que sean. Dicha ruta la podrá modificar el profesor para recompilar todo sin problemas. Todo acceso a fichero se habrá de hacer usando dicha variable para indicar la ruta. 
+
+Como ya se mencionó en la práctica 1, no se tendrá en consideración ningún análisis que, aunque se mencione en el Markdown, no se incluya como tal mediante su código fuente y la generación automática de los resultados. Para una entrega de la práctica sin problemas se aconseja, antes de enviarla, asegurarse de que compila de principio a fin.
+
+Algunos consejos a tener en cuenta
+
+* Si el documento Markdown os resulta muy largo, se aconseja dividir el desarrollo en documentos Markdown más pequeños y una vez estén listos todos los análisis, se puede ensamblar todo en el documento final.
+
+* Seguramente tendremos *chunks* de código llamadas a funciones que tardan demasiado y que resultan un fastidio si necesitamos ejecutarlas repetidas veces cuando estamos a medias de desarrollar algo. Se aconseja, para que la resolución de la práctica sea más ágil, los siguientes pasos: (1)  la variable que almacena el resultado de dicha función se ha de guardar en un fichero, con `saveRDS`, (2) el chunk de código se anula con `eval=FALSE` en el prólogo del chunk para que no se evalue más, (3) el siguiente chunk de código hace uso del resultado leyéndolo del fichero con `readRDS`. 
+
+Se valorará positivamente  (puntos idénticos a los que os mencioné en la práctica 1)
+
+* Corrección y técnica empleada: el abordaje de cada cuestión, tanto en forma como en fondo. Es decir, no solo se valorará que el análisis sea correcto. Además se valorará lo adecuado de la técnica usada para ejecutarlo. Por ejemplo, la visualización de datos resulta de gran utilidad cuando se quiere transmitir un mensaje. Sin embargo, abusar de ella puede ser contraproducente.
+
+* Solidez en las conclusiones: La calidad técnica del trabajo realizado, especialmente las justificaciones. Una pregunta se ha de responder con evidencias. Las conclusiones obtenidas a partir de los datos deben estar justificadas.
+
+* Mensaje visual: La capacidad de ser ilustrativo en los diagramas/explicaciones utilizados sin caer en el exceso o la reiteración. Además, se valorará el cuidado puesto en las posibles visualizaciones que se vayan a usar. Esto incluye el uso de colores, tamaños de letra, elección del tipo de plot a usar y la capacidad para transmitir el mensaje que se busca transmitir.
+
+Recopilando las preguntas a contestar tenemos
+
+|Apartado| Descripción         |Puntos      |
+|-:|------------------------:|-----------:|
+|A | Descripción cjto. Datos | 1.5 puntos |
+|B | Preparación de Datos    |   2 puntos |
+|C | Funcionamiento          | 0.5 puntos |
+|  | Requisitos              |   1 puntos |
+|  | Hiperparámetros         |   1 puntos |
+|  | Grid Hiperparámetros    |   2 puntos |
+|  | Resultados              |   1 puntos |
+|D | Modelo Final            |   1 puntos |
+
+
+
+**La fecha de entrega es el 17 de diciembre de 2023** mediante tarea que se abrirá puntualmente a través del Aula Virtual. La realización de la práctica se realizará en grupos de una o dos personas. 
+
+Los datos de training están basados en este [dataset](https://www.kaggle.com/datasets/asaniczka/top-spotify-songs-in-73-countries-daily-updated), distribuido con licencia [ODC-By 1.0](https://opendatacommons.org/licenses/by/1-0/index.html.
