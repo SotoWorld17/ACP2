@@ -1,0 +1,66 @@
+---
+title: "Práctica 2"
+author: "Lorena Romero y María Soto"
+date: "2023-11-22"
+output:
+  
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Apartado A
+## Descripción del conjunto de datos
+**Describe brevemente el conjunto de entrenamiento.**
+
+
+**Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber:**
+
+**1. predictores numéricos que, a priori, no tienen relación alguna con `popularity` y por tanto no son útiles para su predicción.**
+
+**2. Predictores numéricos que pueden aportar algo a la predicción de `popularity` y predictores categóricos.**
+
+**3. Relacionados con `popularity`.**
+
+**4. No relacionados.**
+
+**Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.**
+
+# Apartado B
+## Preparación de datos
+**Respóndase a las siguientes preguntas en relación a la preparación de datos.**
+
+**- ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
+
+**- ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
+
+**- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**4
+
+
+# Apartado C
+## Fucnionamiento
+**Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
+
+## Requisitos
+**Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
+
+## Descripción de hiperparámetros
+**Identificar y explicar cada uno de sus parámetros de configuración.**
+
+## Grid Hiperparámetros
+**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+## Resultados
+**Describir los resultados del algoritmo.**
+
+# Apartado D
+## Modelo Final
