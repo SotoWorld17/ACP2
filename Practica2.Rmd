@@ -13,9 +13,14 @@ output:
     toc_float: yes
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")
+rmarkdown::render("Practica2.Rmd")
+
 
 
 # Apartado A
@@ -43,7 +48,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **- ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
-**- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**4
+**- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**
 
 
 # Apartado C
