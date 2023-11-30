@@ -13,12 +13,12 @@ output:
     toc_float: yes
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")
+
 rmarkdown::render("Practica2.Rmd")
 
 
@@ -27,17 +27,28 @@ rmarkdown::render("Practica2.Rmd")
 ## Descripción del conjunto de datos
 **Describe brevemente el conjunto de entrenamiento.**
 
+el conjunto de datos de entrenamiento consta de las siguientes variables categóricas:
+artist name, album name, album release date, country, snapshot date, key, mode, time signature.
+y las siguientes variables numéricas:
+danceability, energy, loudness, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration ms, popularity, daily rank, daily movement, weekly movement.
+
+la variable a predecir es la popularidad de la canción, que es un valor numérico entre 0 y 50.
+para ello vamos a usar un modelo de regresión.
 
 **Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber:**
 
 **1. predictores numéricos que, a priori, no tienen relación alguna con `popularity` y por tanto no son útiles para su predicción.**
 
+country, duration, liveness, time_signature, acousticness
 **2. Predictores numéricos que pueden aportar algo a la predicción de `popularity` y predictores categóricos.**
-
+numéricos:
+daily_rank, daily_movement, weekly_movement, valence, tempo, energy, speechiness, instrumentalness
+categóricos:
+artist_name, album_name, mode, is_explicit, danceability, mode
 **3. Relacionados con `popularity`.**
-
+daily_rank, daily_movement, weekly_movement
 **4. No relacionados.**
-
+spotify_id, name, country, duration_ms??, album_name, liveness, key, loudness
 **Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.**
 
 # Apartado B
