@@ -27,6 +27,8 @@ rmarkdown::render("Practica2.Rmd")
 ## Descripción del conjunto de datos
 **Describe brevemente el conjunto de entrenamiento.**
 
+Vamos a trabajar sobre un conjunto de datos en el que se recogen las canciones más populares de Spotify a lo largo de un tiempo. Cada entrada recoge una amplia variedad de información de cada canción que analizaremos más adelante. Nuestro objetivo es utilizar estos datos para predecir la popularidad de canciones.
+
 El conjunto de datos de entrenamiento consta de las siguientes variables categóricas:
 `artists`, `name`, `album_name`, `album_release`, `date`, `country`, `snapshot_date`, `key`, `mode`, `time_signature`.
 
@@ -41,17 +43,13 @@ La variable a predecir es `populariry`, que representa la popularidad de la canc
 
 Vamos a nombrar cada variable que pensamos que no tienen relación con su correspondiente justificación.
 
-- `country`: la ubicación geográfica del origen de la canción no tiene una correlación evidente con su popularidad ya que la mayoría de canciones que escuchamos que son populares no sabemos cuál es su origen o no nos interesa para porder disfrutarla.
-
 - `duration_ms`: creemos que para que una canción se haga popular no tiene que ver cómo de larga o corta es, al final si te gusta la canción no te fijas en lo que dura.
 
-- `liveness`: si una canción se grabó en vivo o en estudio no necesariamente influye en su popularidad, es un distinto pero no implica que de una forma vaya a ser más popular que si se hubiese grabado de la otra forma.
-
-- `time_signature`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
+- `liveness`: el porcentaje de una canción que se grabó en vivo o en estudio no necesariamente influye en su popularidad, es un distinto pero no implica que de una forma vaya a ser más popular que si se hubiese grabado de la otra forma.
 
 - `acousticness`: la calidad acústica de la música es algo que ha perdido importancia, pues hay canciones que no tienen calidad y aún así son muy populares, así que creemos que esto no tiene relación.
 
--`album_name`: muchas de las canciones no más populares no salen ni en un álbum y en general, la gente no se fija en el álbum en sí al que pertenece una canción, simplemente en la canción si les gusta. 
+- `loudness`: pensamos que el nivel de decibelios al que fue grabada la canción no tendrá nada de relación con la popularidad.
 
 **2. Predictores numéricos que pueden aportar algo a la predicción de `popularity` y predictores categóricos.**
 
@@ -59,31 +57,33 @@ Como hemos hecho en el apartado anterior, vamos ir explicanco junto a la variabl
 
 Para los predictores numéricos:
 
--`daily_rank`: La posición diaria en el ranking puede ser un indicador importante de la popularidad de una canción. Si una canción ocupa constantemente un lugar alto es probable que sea popular.
+- `daily_rank`: La posición diaria en el ranking puede ser un indicador importante de la popularidad de una canción. Si una canción ocupa constantemente un lugar alto es probable que sea popular.
 
--`daily_movement`: El cambio diario de la posición podría indicar tendencias en la popularidad de la canción, en caso de subir seguramente indique un aumento de popularidad.
+- `daily_movement`: El cambio diario de la posición podría indicar tendencias en la popularidad de la canción, en caso de subir seguramente indique un aumento de popularidad.
 
--`weekly_movement`: Es parecido al anterior, pero a más largo plazo.
+- `weekly_movement`: Es parecido al anterior, pero a más largo plazo.
 
--`valence`: La media de positivismo transmitido por la canción podría influir en su atractivo general, las cancioens más alegres o las más triste suelen ser las más populares pero si no trasmites nada seguramente no sea popular.
+- `valence`: La media de positivismo transmitido por la canción podría influir en su atractivo general, las cancioens más alegres o las más triste suelen ser las más populares pero si no trasmites nada seguramente no sea popular.
 
--`tempo`: El número de beats por minuto puede influir en la percepción de energía de una canción y ser más popular.
+- `tempo`: El número de beats por minuto puede influir en la percepción de energía de una canción y ser más popular.
 
--`energy`: La energía de la canción podría ser un factor calve en su atractivo puesto que las canciones más enérgicas podrían tener mayor probabilidad de ser populares.
+- `energy`: La energía de la canción podría ser un factor calve en su atractivo puesto que las canciones más enérgicas podrían tener mayor probabilidad de ser populares.
 
--`speechiness`: La presencia de palabra hablada en una canción es muy importante pues la gran mayoría de canciones (por no decir todas) que están en los rankings de popularidad suelen ser todas con letra.
+- `time_signature`: Creemos que el nivel en una esacala de ritmo musical tiene relación con las dos anteriores por lo que pensamos que puede ser relevante para la popularidad de una canción.
 
--`instrumentalness`: La predominandia de la instrumentación sobre la voz pordría influir de la misma forma que la anterior.
+- `speechiness`: La presencia de palabra hablada en una canción es muy importante pues la gran mayoría de canciones (por no decir todas) que están en los rankings de popularidad suelen ser todas con letra.
+
+- `instrumentalness`: La predominandia de la instrumentación sobre la voz pordría influir de la misma forma que la anterior.
 
 Y para los predictores categóricos:
 
--`artist_name`: El artista podría ser un factor importante pues artitas más reconocidos tienen más propabilidad de producir canciones populares.
+- `artist_name`: El artista podría ser un factor importante pues artitas más reconocidos tienen más propabilidad de producir canciones populares.
 
--`mode`: Si la canción está en modo mayor o menos podría influir en la percepción emocional y, por tanto, en su popularidad.
+- `mode`: Si la canción está en modo mayor o menos podría influir en la percepción emocional y, por tanto, en su popularidad.
 
--`is_explicit`: La presencia de lenguaje explícito podría atraet a ciertos públicos y afectar. Por ejemplo, muchas canciones muy populares latinoamericanas tienen un alto porcentaje de palabras sexuales y escenarios explícitos y, a veces, cuan más explícito es más repercusión tiene. Por otra parte, canciones con un lenguaje explícito de violencia no suelen ser populares por motivos obvios.
+- `is_explicit`: La presencia de lenguaje explícito podría atraet a ciertos públicos y afectar. Por ejemplo, muchas canciones muy populares latinoamericanas tienen un alto porcentaje de palabras sexuales y escenarios explícitos y, a veces, cuan más explícito es más repercusión tiene. Por otra parte, canciones con un lenguaje explícito de violencia no suelen ser populares por motivos obvios.
 
--`danceability`: La capacidad de una canción para ser baildad podría ser una factor importante.
+- `danceability`: La capacidad de una canción para ser baildad podría ser una factor importante.
 
 **3. Relacionados con `popularity`.**
 
@@ -92,7 +92,15 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
 
 **4. No relacionados.**
 
-spotify_id, name, country, duration_ms??, album_name, liveness, key, loudness
+- `spotify_id`: no tiene relación porque es simplemente una forma de identificar la canción.
+
+- `name`: creemos que el nombre de la canción no tendrá relevancia porque muchas de las canciones que más escuchamos en nuestro día a día porque se han hecho ``virales'' gracias a las redes sociales no conocemos sus nombres en un principio. 
+
+- `country`: la ubicación geográfica del origen de la canción no tiene una correlación evidente con su popularidad ya que la mayoría de canciones que escuchamos que son populares no sabemos cuál es su origen o no nos interesa para porder disfrutarla.
+ 
+- `album_name`: muchas de las canciones no más populares no salen ni en un álbum y en general, la gente no se fija en el álbum en sí al que pertenece una canción, simplemente en la canción si les gusta. 
+
+- `key`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
 
 # Apartado B
 ## Preparación de datos
