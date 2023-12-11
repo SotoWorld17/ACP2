@@ -14,14 +14,19 @@ output:
 ---
 
 ```{r}
-library(leaflet)
-library(dplyr)
-library(plotly)
-library(viridis)
+library(ggplot2)
+library(tidyverse)
+library(gridExtra)
+library(reshape2)
+library(GGally)
+library(ggfortify)
+library(caret)
 ```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+colorspie <- c("skyblue", "plum3", "pink2", "sandybrown", "palegreen3")
+colorpieborde <- c("skyblue4", "plum4", "pink3", "salmon3", "palegreen4")
 ```
 
 
@@ -44,7 +49,297 @@ El conjunto de datos de entrenamiento consta de las siguientes variables categó
 Y, por otra parte, las siguientes variables numéricas:
 `daily_rank`, `daily_movement`, `weekly_movement`, `snapshot_date`, `duration_ms`, `danceability`, `energy`, `loudness`, `speechiness`, `accousticness`,`liveness`, `instrumentalness` , `valence`, `tempo`, `popularity` y `album_release_date`
 
-La variable a predecir es `populariry`, que representa la popularidad de la canción con un valor numérico entre 0 y 100.
+```{r}
+spotify <- read.csv("spoti.csv", na.strings = "")
+spotify1 = spotify
+spotify1 = spotify1[,-c(1,8)]
+```
+Sin embargo, aqui ya vemos que hay algunas variables que se toman como numéricas cuando hemos hablado de ellas como categóricas, y las fechas que son leídas como strings. Este problema lo trataremos despues. Pero para hacer un pequeño analisis haremos un nuevo dataset donde no tendremos en cuenta los países.Despues haremos la media de popularidad de cada canción. Para ver como de populares son las canciones "mundialmente".
+
+```{r}
+# Calcula la media de la popularidad para cada canción
+mean_popularity <- aggregate(popularity ~ name, data = spotify1, mean)
+
+categories <- cut(spotify1$popularity, breaks = seq(0, 100, by = 10))
+
+barplot(table(categories), main = "Recuento de Canciones por Intervalo de Popularidad", xlab = "Intervalo de Popularidad", ylab = "Recuento", col = colorspie)
+
+
+```
+
+Viendo este grafico se nos ocurre para hacer nuestro pequeño analisis 3 grupos principales.
+  - muy poco populares, cuyo rango será de 0 a 40, de las canciones existentes hay muy pocos canciones poco populares.
+  - populares, cuyo rango de popularidad será de 40 a 80, este rango abarca canciones que han sido conocidas.
+  - y muy populares, cuyo rango de popularidad sera de 80 a 100, las canciones más populares y conocidas.
+  
+Después de haber hecho esta división vamos a seguir haciendo este análisis sin tener en cuenta los países, sino la popularidad "mundial" habiendo hecho la media para no ver en el analisis tantos valores donde la mayoría van a ser repetidos. Para ello ahora vamos a empezar visualizando las variables categóricas que pueden tener algo de relación con `popularity`.
+
+Vamos a utilizar analysis_data, donde no vamos a tener en cuenta el país, de forma inicial
+```{r}
+#primero convertimos las fechas
+spotify1$snapshot_date = as.Date(spotify1$snapshot_date)
+spotify1$album_release_date = as.Date(spotify1$album_release_date)
+
+#creamos analysis_data donde hacemos media de todas las variables, ya que si estas tienen algun remix por ejemplo
+#cambiaran su valencia, energia pero por muy pocas centesimas.
+analysis_data <- aggregate(cbind(popularity, daily_rank, weekly_movement,daily_movement, danceability, energy, loudness, key, speechiness, acousticness, instrumentalness, liveness, valence, tempo, time_signature, duration_ms) ~ name + artists + album_name + is_explicit + album_release_date + mode, data = spotify1, mean)
+
+#ponemos las fechas como minimo, ya que nos interesa cuando entraron a la lista por primera vez
+analysis_data2 <- aggregate(cbind(snapshot_date) ~  name + artists + album_name + is_explicit + album_release_date + mode , data = spotify1, min)
+
+analysis_data$snapshot_date = analysis_data2$snapshot_date
+
+analysis_data$popularity_group <- cut(analysis_data$popularity, breaks = c(0, 40, 80, 100), labels = c("Poco Conocida", "Popular", "Muy Popular"),include.lowest = TRUE)
+analysis_data$popularity_group <- factor(analysis_data$popularity_group, levels = c("Poco Conocida", "Popular", "Muy Popular"))
+
+
+```
+
+Variable `key`
+Primero la pasamos a factor ya que actualmente se interpreta como numerica.
+```{r}
+analysis_data$key = factor(analysis_data$key)
+myplot <- ggplot(data = analysis_data, aes(x = key, fill = popularity_group, color = popularity_group)) +
+  geom_bar(alpha = 0.8, position = "dodge") +
+  ggtitle("Relación entre la clave y la popularidad") +
+  labs(x = "Key", y = "", fill = "Popularity Group") +
+  scale_color_manual(values = colorpieborde, name = "Popularity Group") +
+  scale_fill_manual(values = colorspie, name = "Popularity Group")
+myplot
+
+table(analysis_data$popularity_group, analysis_data$key)
+```
+Aqui podemos vercomo las canciones más populares son las que estan compuestas en key 1. Esto nos hace pensar que esta variable si que estara relacionada con la popularidad debido a que puede aportar algo a las canciones que las haga más atractivas a pesar de que seguramente la persona que escucha la música no sabe la clave en la que está compuesta.
+
+`mode`
+Analizando esta variable hemos descubierto que hay canciones que debido a quizás un remix o posibles erratas, si hacemos la media de esta variable agrupando las canciones por nombre y demás variables hay alguna cuyo modo varía, dando así valores intermedios, por lo que en el agrupamiento anteriormente hemos decidido que no se haga la media de esta variable
+```{r}
+analysis_data$mode = factor(analysis_data$mode)
+myplot <- ggplot(data = analysis_data, aes(x = mode, fill = popularity_group, color = popularity_group)) +
+  geom_bar(alpha = 0.8, position = "dodge") +
+  ggtitle("Relación entre el modo y la popularidad") +
+  labs(x = "Mode", y = "", fill = "Popularity Group") +
+  scale_color_manual(values = colorpieborde, name = "Popularity Group") +
+  scale_fill_manual(values = colorspie, name = "Popularity Group")
+myplot
+
+table(analysis_data$popularity_group, analysis_data$mode)
+```
+Tambien vemos que aquí hay diferencia de canciones, hay 70 canciones más que son muy populares debido al modo en el que están compuestas. Por otro lado hay casi 200 canciones más que son populares compuestas en el modo 0. Sin embargo hay más canciones en el modo 1 que tienen cierta popularidad que en el modo 2.
+Por lo que esta variable tambien puede estar relacionada.
+
+
+`is_explicit`
+
+```{r}
+analysis_data$is_explicit = factor(analysis_data$is_explicit)
+myplot <- ggplot(data = analysis_data, aes(x = is_explicit, fill = popularity_group, color = popularity_group)) +
+  geom_bar(alpha = 0.8, position = "dodge") +
+  ggtitle("Relación entre el modo y la popularidad") +
+  labs(x = "Explicita", y = "", fill = "Popularity Group") +
+  scale_color_manual(values = colorpieborde, name = "Popularity Group") +
+  scale_fill_manual(values = colorspie, name = "Popularity Group")
+myplot
+
+table(analysis_data$popularity_group, analysis_data$is_explicit)
+```
+La mayoría de canciones no explícitas son más populares que las canciones explícitas, por lo que quizás esto tambien juega un rango importante en la popularidad.
+
+`name`, `artists`, `album_name` 
+Aunque estas variables no van a jugar un papel fundamental en nuestro modelo, es más, vamos a prescindir de ellas ya que lo que pretendemos es saber si una canción se hará o no famosa. Vamos a mostrar las canciones más populares, los artistas, y el nombre del album
+
+```{r}
+analysis_datasorted = analysis_data[order(-analysis_data$popularity),]
+
+N<-10
+artistastop = analysis_datasorted$artists[1:10]
+artistastop
+```
+Estos son el top de artistas con más popularidad en este momento. Cada uno tiene diferentes canciones populares
+
+```{r}
+popularity_counts <- table(analysis_datasorted$artists)
+
+cat("Número de canciones en el dataset para cada artista:\n")
+for (artist in artistastop) {
+  cat(artist, ":", popularity_counts[artist], "canciones en la lista\n")
+}
+```
+Y estas son las canciones y el nombre del album
+```{r}
+analysis_datasorted$name[1:10]
+
+analysis_datasorted$album_name[1:10]
+```
+Esto no coincide con el ranking y somos conscientes de ello pero todavía no hemos analizado esas partes. Como recordatorio esto solo lo hemos hecho para hablar un poco de los datos, estas tres variables no las vamos a tener muy en cuenta de ahora en adelante.
+
+***variables continuas***
+
+`daily_rank`
+
+```{r}
+analysis_data$daily_rank = round(analysis_data$daily_rank)
+
+analysis_data$daily_rank_group <- cut(analysis_data$daily_rank, breaks = c(0, 10, 20, 30, 40, 50), labels = c("Top 10", "Top 20", "Top 30", "Top 40", "Top 50"),include.lowest = TRUE)
+
+myplot = ggplot(data=analysis_data, aes(x=daily_rank_group, fill=popularity_group, color = popularity_group)) +
+  geom_bar(alpha=0.8, position="dodge")+
+  labs(x = "Daily_Rank",y="") +
+  scale_color_manual(values = colorpieborde, name="popularity")+
+  scale_fill_manual(values = colorspie, name="popularity")
+myplot
+```
+Esto nos hace pensar que el rank actual no significa que una canción sea muy popular. Estas van a ir ganando popularidad quizás con el tiempo que permanezca en la lista, pero las 10 primeras no son ni por asomo las canciones más populares. 
+
+
+`daily_movement`
+
+```{r}
+analysis_data$daily_movement = round(analysis_data$daily_movement)
+
+analysis_data$daily_movement_group <- cut(analysis_data$daily_movement, breaks = c(-10, 0, 5, 10, 20, 30, 40, 50), labels = c("Baja puestos", "Se mantiene", "Sube puestos", "Sube bastantes puestos", "Sube muchos", "Se hace famosisima de repente", "Da un boom"),include.lowest = TRUE)
+
+myplot = ggplot(data=analysis_data, aes(x=daily_movement_group, fill=popularity_group, color = popularity_group)) +
+  geom_bar(alpha=0.8, position="dodge")+
+  labs(x = "Daily Movemente",y="") +
+  scale_color_manual(values = colorpieborde, name="popularity")+
+  scale_fill_manual(values = colorspie, name="popularity")
+myplot
+```
+El movimiento diario nos muestra que las canciones que se mantienen son las más populares, esto es seguramente por aguantar más tiempo en un ranking superior.
+
+`weekly_movement`
+
+```{r}
+analysis_data$weekly_movement = round(analysis_data$weekly_movement)
+
+analysis_data$weekly_movement_group <- cut(analysis_data$weekly_movement, breaks = c(-10, 0, 5, 10, 20, 30, 40, 50), labels = c("Baja puestos", "Se mantiene", "Sube puestos", "Sube bastantes puestos", "Sube muchos", "Se hace famosisima de repente", "Da un boom"),include.lowest = TRUE)
+
+myplot = ggplot(data=analysis_data, aes(x=weekly_movement_group, fill=popularity_group, color = popularity_group)) +
+  geom_bar(alpha=0.8, position="dodge")+
+  labs(x = "Weekly Movemente",y="") +
+  scale_color_manual(values = colorpieborde, name="popularity")+
+  scale_fill_manual(values = colorspie, name="popularity")
+myplot
+```
+Aqui vemos como para algunas canciones hay NA's como este analisis no es el conjunto de datos definitivo que vamos a tratar no las estamos teniendo en cuenta. Aqui podemos ver como al igual que antes son las canciones que se mantienen las que más populares son.
+
+
+`snapshot_date` interesante analisis junto `album_realease_date`
+Creemos que es interesante analizar el tiempo que tarda una canción en entrar en el dataset porque va a empezar a ganar popularidad para ello vamos a hacer una columna con el numero de dias que una cancion tarda en hacerse famosa
+
+```{r}
+analysis_data$snapshot_date = as.Date(analysis_data$snapshot_date)
+analysis_data$album_release_date = as.Date(analysis_data$album_release_date)
+
+diferencia_dias = as.numeric(analysis_data$snapshot_date - analysis_data$album_release_date)
+analysis_data$numDiasFama = diferencia_dias
+
+analysis_data$numDiasFama = ifelse(analysis_data$numDiasFama <= 0, 0, analysis_data$numDiasFama)
+
+analysis_data$numDiasFama_group <- cut(analysis_data$numDiasFama, breaks = c(-1, 1, 10, 30, 60, 90, 120, 99999), labels = c("Entra al salir", "10 dias", "1 mes", "2 meses", "3 meses", "4 meses", "+"),include.lowest = TRUE)
+sum(is.na(analysis_data$numDiasFama))
+sum(is.na(analysis_data$numDiasFama_group))
+myplot = ggplot(data=analysis_data, aes(x=numDiasFama_group, fill=popularity_group, color = popularity_group)) +
+  geom_bar(alpha=0.8, position="dodge")+
+  labs(x = "Numero Dias Hasta Dataset",y="") +
+  scale_color_manual(values = colorpieborde, name="popularity")+
+  scale_fill_manual(values = colorspie, name="popularity")
+myplot
+```
+Son muy pocas las canciones que nada más salir entran al dataset de spotify. La mayoría de canciones que entran tienen mucha antigüedad. Cabe destacar que la popularidad de las que entran a los 10 dias de salir es baja.
+
+
+`CARACTERÍSTICAS DE LAS CANCIONES`
+`duration_ms`, `danceability`, `energy`, `loudness`, `speechiness`, `accousticness`, `liveness`, `instrumentalness`, `valence`, `tempo`, `time_signature`
+
+```{r}
+analysisContinuas= analysis_data[ , c("popularity_group", "duration_ms", "danceability","energy", "loudness", "speechiness", "acousticness", "liveness", "instrumentalness", "valence", "tempo")]
+mymelt=melt(analysisContinuas, id.vars=1, value.name="FeatureValue", variable.name="Feature")
+
+myplot = ggplot(data=mymelt, aes(x=FeatureValue, fill=popularity_group, color = popularity_group)) +
+  geom_density(alpha=0.8)+
+  ggtitle("Relación entre las variables continuas y la variable de clase")+
+  labs(x = "",y="", fill = "") +
+  scale_color_manual(values = colorpieborde, name="")+
+  scale_fill_manual(values = colorspie, name="")+
+  facet_wrap(~ Feature, ncol=3, scales = "free")
+myplot
+```
+Nos sorprende ver que todas estas variables parecen tener una gran correlación con la variable de clase. Ya que podemos verlas todas superpuestas, sin embargo vemos que hay valores muy dispersos y nos gustaria trabajar con ellos en quizas la misma escala, es por esto que quizás más adelante se normalicen estos valores.
+
+Creemos que además de con la popularidad, estas variables van a estar bastante correlacionadas entre sí.
+
+```{r}
+analysisContinuas= analysis_data[ , c("duration_ms", "danceability","energy", "loudness", "speechiness", "acousticness", "liveness", "instrumentalness", "valence", "tempo")]
+corrplot::corrplot(cor(analysisContinuas))
+
+```
+Y tal como imaginamos podemos ver la relación que existe entre estas variables. Por ejemplo la relación negativa que hay entre acousticness y energy que puede ser debido a que el acústico transmite menos energia. O que las canciones donde hay energía sean más "ruidosas".
+
+
+Por ultimo `time_signature`
+```{r}
+myplot = ggplot(data=analysis_data, aes(x=time_signature, fill=popularity_group, color = popularity_group)) +
+  geom_bar(alpha=0.8, position="dodge")+
+  labs(x = "Time Signature",y="") +
+  scale_color_manual(values = colorpieborde, name="popularity")+
+  scale_fill_manual(values = colorspie, name="popularity")
+myplot
+```
+Vemos como casi todas las canciones tienen un time_signature de 4, y que no hay ninguna con 2. Por lo tanto seguramente esta variable sea un poco indiferente a la hora de conocer la popularidad. Pero nos ayudará a determinar que la mayoría de canciones se hacen populares cuando su time_signature es de 4.
+
+Antes de comenzar con las preguntas del apartado 1, nos gustaría hacer un pequeño PCA para mostrar si con las variables que tenemos numéricas seriamos capaces de determinar algo de información sobre la popularidad.
+
+```{r}
+analysis_pca = analysisContinuas
+analysis_pca$daily_rank = analysis_data$daily_rank
+analysis_pca$weekly_movement = analysis_data$weekly_movement 
+analysis_pca$daily_movement = analysis_data$daily_movement
+analysis_pca$time_signature = analysis_data$time_signature
+analysis_pca$numDiasFama = analysis_data$numDiasFama
+analysis_pca_estatus = analysis_data$popularity_group
+
+# PCA
+pca_result <- prcomp(analysis_pca, scale = TRUE)
+row.names(pca_result$x) = analysis_pca_estatus
+pcas = as.data.frame(pca_result$x, stringsAsFactors =F)
+pcas = cbind(ESTATUS = analysis_pca_estatus,pcas)
+```
+
+```{r}
+ggplot(pcas, aes(PC1, PC2, color = ESTATUS, shape=ESTATUS)) +
+  geom_point(size = 1, alpha=0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = colorspie) +
+  scale_shape_manual(values = c(17, 16, 15)) +
+  xlab("Primera componente principal") +
+  ylab("Segunda componente principal") +
+  ggtitle("Las dos primeras componentes principales de titanicData") +
+  guides(color = guide_legend(title = "Estado de Popularidad"), shape = guide_legend(title = "Estado de Popularidad")) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+```{r}
+autoplot(pca_result, data=analysis_data, cex = 0.7, color = "popularity_group",
+         loadings = TRUE, loadings.colour = 'plum3',
+         loadings.label = TRUE, loadings.label.size = 4, loadings.label.colour = 'pink4')
+```
+Debido a la gran cantidad de datos es casi imposible ver lo que nos señala este PCA, sin embargo podemos ver la parte representativa de cada componente en el analisis.
+
+```{r}
+(VE <- pca_result$sdev^2)
+PVE <- VE / sum(VE)
+cumsum(round(PVE, 2))
+```
+Vemos que con 11 de estas variables ya seriamos capaces de procesar un 98% de la popularidad. Y eso que solo estamos trabajando con las numéricas, 12 variables sobre las 26 disponibles inicialmente son muy buenas para entrenar un modelo. Lo que nos lleva a pensar que quizás no necesitemos de las otras variables para hacer un buen trabajo.
+
+
+
+
+
 
 **Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber. Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.**
 
@@ -94,6 +389,8 @@ Y para los predictores categóricos:
 
 - `snapshot_date`: La fecha en la que se recogieron los datos podría ser importante porque la popularidad de una canción puede variar con el tiempo.
 
+- `key`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
+
 **3. Relacionados con `popularity`.**
 
 Pensamos que las variables que más relación tienen con la popularidad son los puestos que tiene una canción diariamente y semanal y sus movimientos entre los puestos. `daily_rank`, `daily_movement` y `weekly_movement`.
@@ -111,14 +408,10 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
  
 - `album_name`: muchas de las canciones no más populares no salen ni en un álbum y en general, la gente no se fija en el álbum en sí al que pertenece una canción, simplemente en la canción si les gusta. 
 
-- `key`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
 
 - `album_release_date`: no vamos a trabajar con esta variable porque no nos interesa la fecha de lanzamiento del álbum.
 
-```{r}
-spotify <- read.csv("spoti.csv", na.strings = "")
-summary(spotify)
-```
+
 Para empezar vamos a eliminar la variable X, ya que creemos que es una variable nula que se ha colado en la lectura del csv, después vamos a pasar a variables categóricas key y mode ya que actualmente se consideran como numéricas. Y convertiremos las clases `album_release_date` y `snapshot_date` en fechas, en lugar de cadenas para despues poder tratar con ellas.
 ```{r}
 spotify = spotify[,-1]
