@@ -13,9 +13,18 @@ output:
     toc_float: yes
 ---
 
+```{r}
+library(leaflet)
+library(dplyr)
+library(plotly)
+library(viridis)
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
 
 Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")
 
@@ -30,12 +39,12 @@ rmarkdown::render("Practica2.Rmd")
 Vamos a trabajar sobre un conjunto de datos en el que se recogen las canciones más populares de Spotify a lo largo de un tiempo. Cada entrada recoge una amplia variedad de información de cada canción que analizaremos más adelante. Nuestro objetivo es utilizar estos datos para predecir la popularidad de canciones.
 
 El conjunto de datos de entrenamiento consta de las siguientes variables categóricas:
-`artists`, `name`, `album_name`, `album_release`, `date`, `country`, `snapshot_date`, `key`, `mode`, `time_signature`.
+`spotify_id`, `name`, `artists`, `country`, `is_explicit`,  `album_name`, `key`, `mode`, `time_signature`
 
 Y, por otra parte, las siguientes variables numéricas:
-`danceability`, `energy`, `loudness`, `speechiness`, `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`, `duration_ms`, `popularity`, `daily_rank`, `daily_movement`, `weekly_movement`.
+`daily_rank`, `daily_movement`, `weekly_movement`, `snapshot_date`, `duration_ms`, `danceability`, `energy`, `loudness`, `speechiness`, `accousticness`,`liveness`, `instrumentalness` , `valence`, `tempo`, `popularity` y `album_release_date`
 
-La variable a predecir es `populariry`, que representa la popularidad de la canción con un valor numérico entre 0 y 50. Planteamos utilizar un modelo de regresión para predecir esta variable.
+La variable a predecir es `populariry`, que representa la popularidad de la canción con un valor numérico entre 0 y 100.
 
 **Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber. Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.**
 
@@ -77,13 +86,13 @@ Para los predictores numéricos:
 
 Y para los predictores categóricos:
 
-- `artist_name`: El artista podría ser un factor importante pues artitas más reconocidos tienen más propabilidad de producir canciones populares.
-
 - `mode`: Si la canción está en modo mayor o menos podría influir en la percepción emocional y, por tanto, en su popularidad.
 
 - `is_explicit`: La presencia de lenguaje explícito podría atraet a ciertos públicos y afectar. Por ejemplo, muchas canciones muy populares latinoamericanas tienen un alto porcentaje de palabras sexuales y escenarios explícitos y, a veces, cuan más explícito es más repercusión tiene. Por otra parte, canciones con un lenguaje explícito de violencia no suelen ser populares por motivos obvios.
 
 - `danceability`: La capacidad de una canción para ser baildad podría ser una factor importante.
+
+- `snapshot_date`: La fecha en la que se recogieron los datos podría ser importante porque la popularidad de una canción puede variar con el tiempo.
 
 **3. Relacionados con `popularity`.**
 
@@ -91,6 +100,8 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
 
 
 **4. No relacionados.**
+
+- `artists`: El artista podría ser un factor importante pues artitas más reconocidos tienen más propabilidad de producir canciones populares. Pero, no nos servira en nuestro estudio ya que estamos planteando hacer un reconocimiento para canciones nuevas que no tienen por que ser de artistas conocidos, por eso no nos va a aportar nada en el modelo que vamos a entrenar.
 
 - `spotify_id`: no tiene relación porque es simplemente una forma de identificar la canción.
 
@@ -102,12 +113,149 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
 
 - `key`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
 
+- `album_release_date`: no vamos a trabajar con esta variable porque no nos interesa la fecha de lanzamiento del álbum.
+
+```{r}
+spotify <- read.csv("spoti.csv", na.strings = "")
+summary(spotify)
+```
+Para empezar vamos a eliminar la variable X, ya que creemos que es una variable nula que se ha colado en la lectura del csv, después vamos a pasar a variables categóricas key y mode ya que actualmente se consideran como numéricas. Y convertiremos las clases `album_release_date` y `snapshot_date` en fechas, en lugar de cadenas para despues poder tratar con ellas.
+```{r}
+spotify = spotify[,-1]
+
+spotify$mode = factor(spotify$mode)
+spotify$key = factor(spotify$key)
+
+spotify$album_release_date = as.Date(spotify$album_release_date)
+spotify$snapshot_date = as.Date(spotify$snapshot_date)
+
+```
+
+A continuación vamos a mirar los NA's que presentan nuestras variables.
+```{r}
+colSums(is.na(spotify))
+```
+Después de haber mirado un poco por encima el dataset, sabemos que los 21 valores nulos que se muestran con `name` y `artists` son los mismos, al igual que los 22 de `album_release_date` y `album_name`. Además 21 de ellos coinciden como nulos con `name` y `album_name`. 
+Aqui podemos ver la cantidad de nulos que coinciden con `name` y `artists`
+```{r}
+table(is.na(spotify$name), is.na(spotify$artists))
+```
+Aqui podemos ver la cantidad de nulos que coinciden con `album_release_date` y `album_name` 
+
+```{r}
+table(is.na(spotify$album_release_date), is.na(spotify$album_name))
+```
+
+y aqui la cantidad de nulos que coinciden con `name`y `album_release_date`
+
+```{r}
+table(is.na(spotify$name), is.na(spotify$album_name))
+```
+Lo que vamos a hacer es eliminar los 22 valores nulos de estas distintas filas, ya que consideramos que son pocos los datos de los que vamos a prescindir.
+```{r}
+spotify <- spotify[complete.cases(spotify$album_release_date), ]
+
+colSums(is.na(spotify))
+```
+Ahora podemos ver que solo quedan 1452 nulos en la columna `country` del dataset. La estrategia que vamos a utilizar es omitir estas filas tambien, ya que contando actualmente con 105647 datos, creemos que podemos prescindir de estos 1452 nulos, dejandonos asi con 104195 valores para nuestro trabajo de investigación.
+```{r}
+table(is.na(spotify$country))
+spotify <- spotify[complete.cases(spotify$country), ]
+```
+
+Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta se hace famosa, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener asi un registro del número de días que una canción tardó en hacerse popular, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
+
+```{r}
+diferencia_dias = as.numeric(spotify$snapshot_date - spotify$album_release_date)
+
+spotify$diferencia_dias = diferencia_dias
+spotify$diferencia_dias = ifelse(spotify$diferencia_dias < 0, 0, spotify$diferencia_dias)
+```
+Otra idea que hemos observado, es que distintas canciones son repetidas y tienen una diferente popularidad dependiendo del país, al principio pensamos que sería una buena idea organizarlas dependiendo del continente en la que esta canción se volvió popular. Recapacitando sobre esta primera interpretación, pensamos que no es tan buena idea, por ejemplo las personas en sudamerica, no escucharan la misma música que las personas en norteamérica debido a que el idioma más hablado en ambas áreas es distinto. Por lo que organizaremos `country` en una nueva columna, dividiendo los países del continente americano en northAmerica y southAmerica. Para ello vamos a visualizar los distintos paises primeros.
+
+```{r}
+diccionario_continentes <- c(
+  AE = "AS", AR = "SA", AT = "EU", AU = "OC",
+  BE = "EU", BG = "EU", BO = "SA", BR = "SA",
+  BY = "EU", CA = "SA", CH = "EU", CL = "SA",
+  CO = "SA", CR = "SA", CZ = "EU", DE = "EU",
+  DK = "EU", DO = "SA", EC = "SA", EE = "EU",
+  EG = "AF", ES = "EU", FI = "EU", FR = "EU",
+  GB = "EU", GR = "EU", GT = "SA", HK = "AS",
+  HN = "SA", HU = "EU", ID = "AS", IE = "EU",
+  IL = "AS", IN = "AS", IS = "EU", IT = "EU",
+  JP = "AS", KR = "AS", KZ = "AS", LT = "EU",
+  LU = "EU", LV = "EU", MA = "AF", MX = "NA",
+  MY = "AS", NG = "AF", NI = "SA", NL = "EU",
+  NO = "EU", NZ = "OC", PA = "SA", PE = "SA",
+  PH = "AS", PK = "AS", PL = "EU", PT = "EU",
+  PY = "SA", RO = "EU", SA = "AS", SE = "EU",
+  SG = "AS", SK = "EU", SV = "SA", TH = "AS",
+  TR = "AS", TW = "AS", UA = "EU", US = "NA",
+  UY = "SA", VE = "SA", VN = "AS", ZA = "AF"
+)
+
+spotify$continent = diccionario_continentes[spotify$country]
+```
+A continuación como hemos visto que muchas canciones se repiten en los distintos paises, vamos a eliminar los duplicados que comparten el nombre de la canción, el país y la popularidad de los datos, consideramos una interesante estrategia, dejando la primera y ultima aparición de cada dato y aquellos datos que no estan repetidos. Al juntarlos sin embargo hemos ocasionado que se repitan algunas filas, para ello utilizamos unique, en la que tenemos en cuenta todas las variables por lo que eliminamos todas las filas que se repiten completamente dejando solo una instancia de ellas.
+
+
+```{r}
+comprobar_duplicados = spotify[, c("name","country","popularity")] 
+# sum(duplicated(comprobar_duplicados))
+
+spotify_primera_aparicion = spotify[!duplicated(comprobar_duplicados), ]
+
+spotify_ultima_aparicion = spotify[!duplicated(comprobar_duplicados, fromLast = TRUE), ]
+
+spotify_pyu <- rbind(spotify_primera_aparicion, spotify_ultima_aparicion)
+
+spotifyNoDup =  spotify[!duplicated(comprobar_duplicados) & !duplicated(comprobar_duplicados, fromLast = TRUE), ]
+
+# 
+# comprobar_duplicados2 = spotifyNoDup[, c("name","country","popularity", "continent")] 
+# sum(duplicated(comprobar_duplicados2))
+# 
+
+spotifyFinal = rbind (spotify_pyu, spotifyNoDup)
+# (duplicated(comprobar_duplicados2))
+# sum(duplicated(spotifyFinal))
+
+spotifyFinal_sin_duplicados <- unique(spotifyFinal)
+```
+
+```{r}
+spotify = spotifyFinal_sin_duplicados
+rm(spotifyFinal_sin_duplicados, spotify_primera_aparicion, spotify_ultima_aparicion, spotify_pyu, spotifyFinal, spotifyNoDup, diferencia_dias, diccionario_continentes, comprobar_duplicados)
+```
+
+Hasta ahora no hemos hecho nada más que añadir columnas, pero sabemos de antemano que no todas ellas nos van a ser de utilidar para entrenar nuestro modelo, sin embargo no las hemos eliminado anteriormente para hacer la anterior limpieza de datos, ahora sin embargo procedemos a quitar las columnas `spotify_id`, `name`, `artists`, `album_name`, `album_release_date`   
+```{r}
+spotify = spotify[, -c(1,2,3,12,13)]
+```
+
+Anteriormente hemos agrupado los argumentos `album_release_date` y `snapshot_date` en la variable que recoge la diferencia de días. Por lo que ahora tambien consideramos oportuno quitar la variable `snapshot_date` ya que ya tenemos en el dataset el número de días que la canción ha tardado en tener la respectiva `popularity`
+
+
+```{r}
+spotify = spotify[, -5]
+```
+
+
+Anteriormente hemos considerado crear la variable `continente` para hacer una mayor limpieza de datos, pero debido a que se nos ha ocurrido la otra alternativa para hacer limpieza de duplicados y no cargarnos tantos, consideramos que ya no nos va a hacer falta `continent`, al igual que `country`. Porque, volvemos a repetir el objetivo es dada una canción saber si esta se va a hacer famosa o no, para ello no vamos a tener en cuenta el país o continente.
+
+```{r}
+spotify = spotify[, -c(4,21)]
+```
+
+
 # Apartado B
 ## Preparación de datos
 **Respóndase a las siguientes preguntas en relación a la preparación de datos.**
+Antes vamos a plotear algunos datos de los que no sabemos con seguridad como vamos a ir tratandolos.
 
 **- ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
-
+Los predictores que habría que normalizar
 **- ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
 **- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**
