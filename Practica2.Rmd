@@ -21,6 +21,9 @@ library(reshape2)
 library(GGally)
 library(ggfortify)
 library(caret)
+library(FactoMineR)
+library(factoextra)
+library(plotly)
 ```
 
 ```{r setup, include=FALSE}
@@ -51,12 +54,18 @@ Y, por otra parte, las siguientes variables numéricas:
 
 ```{r}
 spotify <- read.csv("spoti.csv", na.strings = "")
-spotify1 = spotify
-spotify1 = spotify1[,-c(1,8)]
+
+summary(spotify)
 ```
-Sin embargo, aquí ya vemos que hay algunas variables que se toman como numéricas cuando hemos hablado de ellas como categóricas, y las fechas que son leídas como strings. Este problema lo trataremos después. Pero para hacer un pequeño análisis haremos un nuevo dataset donde no tendremos en cuenta los países. Después, haremos la media de popularidad de cada canción para ver cómo de populares son las canciones "mundialmente".
+Sin embargo, aquí ya vemos que hay algunas variables que se toman como numéricas cuando hemos hablado de ellas como categóricas, y las fechas que son leídas como strings. Este problema lo trataremos después. 
+
+Pero para hacer un pequeño análisis haremos un nuevo dataset donde no tendremos en cuenta los países. Después, haremos la media de popularidad de cada canción para ver cómo de populares son las canciones "mundialmente".
 
 ```{r}
+spotify1 = spotify
+#eliminamos columna paises
+spotify1 = spotify1[,-c(1,8)]
+
 # Calcula la media de la popularidad para cada canción
 mean_popularity <- aggregate(popularity ~ name, data = spotify1, mean)
 
@@ -116,7 +125,7 @@ Podemos ver como las canciones más populares son las que están compuestas en k
 
 - `mode`
 
-Analizando esta variable hemos descubierto que hay canciones que tienen un cambio de modo, es decir, que si una canción está en un principio en una tonalidad mayor como puede ser "Do Mayor", en medio de la canción podría haber una variación a una tonalidad menor como "La menor" e incluso hacer este cambio varias ocasiones. Entonces, si hacemos la media de esta variable agrupando las canciones por nombre y el resto de variables hay alguna cuyo modo varía, dando así valores intermedios, por lo que en el agrupamiento anteriormente hemos decidido que no se haga la media de esta variable.
+Analizando esta variable hemos descubierto que hay canciones que tienen un cambio de modo, es decir, que si una canción está en un principio en una tonalidad mayor otra variación de esta, un remix o incluso un error ocasiona que en algunas canciones haya cambios de modo. Entonces, si hacemos la media de esta variable agrupando las canciones por nombre y el resto de variables hay alguna cuyo modo varía, dando así valores intermedios, por lo que en el agrupamiento anteriormente hemos decidido que no se haga la media de esta variable.
 
 ```{r}
 analysis_data$mode = factor(analysis_data$mode)
@@ -131,7 +140,7 @@ myplot
 table(analysis_data$popularity_group, analysis_data$mode)
 ```
 
-También vemos que aquí hay diferencia de canciones, hay 70 canciones más que son muy populares debido al modo en el que están compuestas. Por otro lado, hay casi 200 canciones más que son populares compuestas en el modo 0. Sin embargo, hay más canciones en el modo 1 que tienen cierta popularidad que en el modo 0.
+También vemos que aquí hay diferencia de canciones, hay aproximadamente 70 canciones más que son muy populares debido al modo en el que están compuestas. Por otro lado, hay casi 200 canciones más que son populares compuestas en el modo 0. Sin embargo, hay más canciones en el modo 1 que tienen cierta popularidad que en el modo 0.
 Por lo que esta variable también puede estar relacionada.
 
 
@@ -199,7 +208,7 @@ myplot = ggplot(data=analysis_data, aes(x=daily_rank_group, fill=popularity_grou
   scale_fill_manual(values = colorspie, name="popularity")
 myplot
 ```
-Esto nos hace pensar que el rank actual no significa que una canción sea muy popular. Estas van a ir ganando popularidad quizás con el tiempo que permanezca en la lista, pero las 10 primeras no se acercan en absoluto a las canciones más populares. 
+Esto nos hace pensar que el ranking actual no significa que una canción sea muy popular. Estas van a ir ganando popularidad quizás con el tiempo que permanezca en la lista, pero las 10 primeras no se acercan en absoluto a las canciones más populares. 
 
 - `daily_movement`
 
@@ -223,7 +232,7 @@ El movimiento diario nos muestra que las canciones que se mantienen son las más
 ```{r}
 analysis_data$weekly_movement = round(analysis_data$weekly_movement)
 
-analysis_data$weekly_movement_group <- cut(analysis_data$weekly_movement, breaks = c(-10, 0, 5, 10, 20, 30, 40, 50), labels = c("Baja puestos", "Se mantiene", "Sube puestos", "Sube bastantes puestos", "Sube muchos", "Se hace famosísima de repente", "Da un boom"),include.lowest = TRUE)
+analysis_data$weekly_movement_group <- cut(analysis_data$weekly_movement, breaks = c(-20, 0, 5, 10, 20, 30, 40, 80), labels = c("Baja puestos", "Se mantiene", "Sube puestos", "Sube bastantes puestos", "Sube muchos", "Se hace famosísima de repente", "Da un boom"),include.lowest = TRUE)
 
 myplot = ggplot(data=analysis_data, aes(x=weekly_movement_group, fill=popularity_group, color = popularity_group)) +
   geom_bar(alpha=0.8, position="dodge")+
@@ -338,9 +347,13 @@ ggplot(pcas, aes(PC1, PC2, color = ESTATUS, shape=ESTATUS)) +
 autoplot(pca_result, data=analysis_data, cex = 0.7, alpha=0.6, color = "popularity_group",
          loadings = TRUE, loadings.colour = 'gold',
          loadings.label = TRUE, loadings.label.size = 4, loadings.label.colour = 'mediumvioletred')
+
+fviz_pca_var(pca_result, col.var = "contrib",
+             gradient.cols = c("white", "blue", "red"), 
+             repel = TRUE)
 ```
 
-Debido a la gran cantidad de datos es casi imposible ver lo que nos muestra este PCA, aunque podemos ver la parte representativa de cada componente en el análisis.
+Debido a la gran cantidad de datos es casi imposible ver lo que nos muestra este PCA, aunque podemos ver la parte representativa de cada componente en el análisis. Tambien se nos dice que variables como weekly_movement, energy, loudness... presentan una gran variación para nuestros datos.
 
 ```{r}
 (VE <- pca_result$sdev^2)
@@ -349,6 +362,68 @@ cumsum(round(PVE, 2))
 ```
 Vemos que con 11 de estas variables ya seríamos capaces de procesar un 98% de la popularidad. Y eso que solo estamos trabajando con las numéricas, 12 variables sobre las 26 disponibles inicialmente son muy buenas para entrenar un modelo. Lo que nos lleva a pensar que quizás no necesitemos de las otras variables para hacer un buen trabajo.
 
+Finalmente vamos a analizar un poco de la variable `country` la que hemos eliminado anteriormente sin tener reparo en que esta variable tendrá canciones con popularidad distinta en cada país, vamos a quedarnos con aquellas con mayor popularidad y por lo tanto vamos a ver solo un poco de como afectan las variables numéricas a los distintos países.
+
+```{r}
+library(rnaturalearth)
+library(ggplot2)
+library(purrr)
+library(cowplot)
+
+analysis_data <- aggregate(cbind(popularity, daily_rank, weekly_movement,daily_movement, danceability, energy, loudness, key, speechiness, acousticness, instrumentalness, liveness, valence, tempo, time_signature, duration_ms) ~ name + artists + album_name + is_explicit + album_release_date + mode + country, data = spotify, mean)
+
+analysis_data2 <- aggregate(cbind(snapshot_date) ~  name + artists + album_name + is_explicit + album_release_date + mode + country , data = spotify, min)
+
+analysis_data$snapshot_date = analysis_data2$snapshot_date
+
+# Cargar datos de límites de países
+world <- ne_countries(returnclass = "sf")
+
+world = world[, c("iso_a2", "geometry")]
+
+# Crear un conjunto de datos de ejemplo
+spotify_mean <- data.frame(
+  country= analysis_data$country,
+  popularity = analysis_data$popularity,
+  is_explicit = analysis_data$is_explicit,
+  duration_ms = analysis_data$duration_ms, 
+  danceability = analysis_data$danceability,
+  energy = analysis_data$energy,
+  loudness = analysis_data$loudness,
+  speechiness = analysis_data$speechiness,
+  liveness = analysis_data$liveness,  
+  instrumentalness = analysis_data$instrumentalness,
+  valence = analysis_data$valence, 
+  tempo = analysis_data$tempo
+)
+
+# Quedarse con las filas en las que la popularidad es mayor que 80
+spotify_mean <- spotify_mean[spotify_mean$popularity > 80, ]
+
+# Unir datos de Spotify con datos del mundo
+world_spotify <- merge(world, spotify_mean, by.x = "iso_a2", by.y = "country", all.x = FALSE)
+
+# Lista de variables a usar en cada mapa
+variables <- c("duration_ms", "danceability", "energy", "loudness", "speechiness", "liveness", "valence", "tempo")
+
+# Crear una lista de gráficos usando purrr::map
+maps <- map(variables, function(var) {
+  ggplot() +
+    geom_sf(data = world_spotify, aes_string(fill = var)) +
+    scale_fill_gradient(low = "lightyellow", high = "sandybrown") +
+    theme_minimal() +
+    labs(title = var)  # Título con el nombre de la variable
+})
+
+plot_grid(plotlist = maps, ncol = 3)
+```
+Aqui podemos ver como la 'danceability' de las canciones más populares sera distinta en cada país. Y otras características como por ejemplo la `valence` en Oceanía disfrutaran de canciones más calmadas que por ejemplo en sur América.
+
+```{r}
+rm(analysis_data, analysis_data2, analysis_datasorted,mean_popularity, canciones, mymelt, artist, pcas, pca_result, spotify_mean, spotify1, world, world_spotify, myplot, maps, analysisContinuas, analysis_pca, analysis_pca_estatus, artistastop, categories, diferencia_dias, N, popularity_counts, PVE, variables, VE)
+```
+
+Después de haber hecho este pequeño análisis, cuyos datos son una muestra representativa del conjunto inicial pasamos a responder las preguntas del apartado A.
 
 **Describe además, los atributos predictores del conjunto y la variable a predecir. Divide la descripción de los atributos en cuatro grupos, a saber. Justifica el porqué entiendes que cada atributo tiene o no relación con `popularity`.**
 
@@ -356,13 +431,8 @@ Vemos que con 11 de estas variables ya seríamos capaces de procesar un 98% de l
 
 Vamos a nombrar cada variable que pensamos que no tienen relación con su correspondiente justificación.
 
-- `duration_ms`: creemos que para que una canción se haga popular no tiene que ver cómo de larga o corta es, al final si te gusta la canción no te fijas en lo que dura.
-
-- `liveness`: el porcentaje de una canción que se grabó en vivo o en estudio no necesariamente influye en su popularidad, es un distinto pero no implica que de una forma vaya a ser más popular que si se hubiese grabado de la otra forma.
-
-- `acousticness`: la calidad acústica de la música es algo que ha perdido importancia, pues hay canciones que no tienen calidad y aún así son muy populares, así que creemos que esto no tiene relación.
-
-- `loudness`: pensamos que el nivel de decibelios al que fue grabada la canción no tendrá nada de relación con la popularidad.
+- `album_release_date`: no estamos muy seguras de si esta variable se tratará más adelante o si tendrá relación con la popularidad.
+- `snapshot_date`: La fecha en la que se recogieron los datos podría ser importante porque la popularidad de una canción puede variar con el tiempo aunque no estamos muy seguro de ellos.
 
 **2. Predictores numéricos que pueden aportar algo a la predicción de `popularity` y predictores categóricos.**
 
@@ -388,17 +458,24 @@ Para los predictores numéricos:
 
 - `instrumentalness`: La predominandia de la instrumentación sobre la voz pordría influir de la misma forma que la anterior.
 
+- `duration_ms`: como hemos visto antes esta variable podria estar relacionada con la popularidad
+
+- `liveness`: el porcentaje de una canción que se grabó en vivo o en estudio influirá en la popularidad.
+
+- `acousticness`: la calidad acústica de la música es algo que tambien tendra relación.
+
+- `loudness`: pensamos que el nivel de decibelios al que fue grabada la canción importará para la popularidad.
+
+- `danceability`: La capacidad de una canción para ser baildad podría ser una factor importante.
+
+
 Y para los predictores categóricos:
 
 - `mode`: Si la canción está en modo mayor o menos podría influir en la percepción emocional y, por tanto, en su popularidad.
 
 - `is_explicit`: La presencia de lenguaje explícito podría atraet a ciertos públicos y afectar. Por ejemplo, muchas canciones muy populares latinoamericanas tienen un alto porcentaje de palabras sexuales y escenarios explícitos y, a veces, cuan más explícito es más repercusión tiene. Por otra parte, canciones con un lenguaje explícito de violencia no suelen ser populares por motivos obvios.
 
-- `danceability`: La capacidad de una canción para ser baildad podría ser una factor importante.
-
-- `snapshot_date`: La fecha en la que se recogieron los datos podría ser importante porque la popularidad de una canción puede variar con el tiempo.
-
-- `key`: pensamos que la escala en la que está compuesta no afectará porque da igual si está en clave de sol, de fa o de do, porque la mayoría de personas no son músicos y en lo que se fija la gente es en si suena bien la canción simplemente.
+- `key`: pensamos que la escala en la que está compuesta podrá afectar a la popularidad.
 
 **3. Relacionados con `popularity`.**
 
@@ -417,9 +494,8 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
  
 - `album_name`: muchas de las canciones no más populares no salen ni en un álbum y en general, la gente no se fija en el álbum en sí al que pertenece una canción, simplemente en la canción si les gusta. 
 
-
-- `album_release_date`: no vamos a trabajar con esta variable porque no nos interesa la fecha de lanzamiento del álbum.
-
+# Apartado B
+## Preparación de datos
 
 Para empezar vamos a eliminar la variable X, ya que creemos que es una variable nula que se ha colado en la lectura del csv, después vamos a pasar a variables categóricas key y mode ya que actualmente se consideran como numéricas. Y convertiremos las clases `album_release_date` y `snapshot_date` en fechas, en lugar de cadenas para despues poder tratar con ellas.
 ```{r}
@@ -469,7 +545,9 @@ table(is.na(spotify$country))
 spotify <- spotify[complete.cases(spotify$country), ]
 ```
 
-Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta se hace famosa, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de días que una canción tardó en hacerse popular, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
+
+
+Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta obtiene una nueva posición en el ranking, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de días que una canción tardó en hacerse popular, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
 
 ```{r}
 diferencia_dias = as.numeric(spotify$snapshot_date - spotify$album_release_date)
@@ -478,7 +556,7 @@ spotify$diferencia_dias = diferencia_dias
 spotify$diferencia_dias = ifelse(spotify$diferencia_dias < 0, 0, spotify$diferencia_dias)
 ```
 
-Otra idea que nos surge al observar los datos es que distintas canciones están repetidas y tienen una diferente popularidad dependiendo del país, al principio pensamos que sería una buena idea organizarlas dependiendo del continente en la que esta canción se volvió popular. Recapacitando sobre esta primera interpretación, pensamos que no es tan buena idea, por ejemplo las personas en Sudamérica , no escuchará    n la misma música que las personas en Norteamérica  debido a que el idioma más hablado en ambas áreas es distinto. Por lo que organizaremos `country` en una nueva columna, dividiendo los países del continente americano en northAmerica y southAmerica. Para ello vamos a visualizar los distintos paises primeros.
+Otra idea que nos surge al observar los datos es que distintas canciones están repetidas y tienen una diferente popularidad dependiendo del país, al principio pensamos que sería una buena idea organizarlas dependiendo del continente en la que esta canción se volvió popular. Recapacitando sobre esta primera interpretación, pensamos que no es tan buena idea, por ejemplo las personas en Sudamérica , no escucharán la misma música que las personas en Norteamérica  debido a que el idioma más hablado en ambas áreas es distinto. Por lo que organizaremos `country` en una nueva columna, dividiendo los países del continente americano en northAmerica y southAmerica. Para ello vamos a visualizar los distintos paises primeros.
 
 ```{r}
 diccionario_continentes <- c(
@@ -555,12 +633,7 @@ Cómo explicábamos antes, hemos considerado crear la variable `continente` para
 spotify = spotify[, -c(4,21)]
 ```
 
-
-# Apartado B
-## Preparación de datos
 **Respóndase a las siguientes preguntas en relación a la preparación de datos.**
-Antes vamos a plotear algunos datos de los que no sabemos con seguridad como vamos a ir tratándolos.
-
 
 **- ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
 Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo`?, `diferencia_dias`.
