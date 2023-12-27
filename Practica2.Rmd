@@ -636,6 +636,7 @@ spotify = spotify[, -c(4,21)]
 **Respóndase a las siguientes preguntas en relación a la preparación de datos.**
 
 **- ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
+
 Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo`?, `diferencia_dias`.
 
 -`duration_ms`: pensamos que  una mejor forma de analizar la duración de las canciones es si normalizamos estos valores con segundos en vez de milisegundos pues así no tenemos datos muy específico que, además, no creemos que una diferencia de milisegundos entre las canciones afecte a los resultados y de esta forma es más fácil comparar las duraciones pues en spotify el valor mínimo que se guarda de cara al público es en segundos.
@@ -666,25 +667,127 @@ spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
 
 **- ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
-**AQUÍ LO MISMO DEBERÍAN IR ALGUNAS PARTES DEL PRINCIPIO QUE HAS HECHO** 
+Sí, consideramos que podría ser interesante transformar la variable `key` en variables dummy. La variable `key` representa la tonalidad de la canción, y al ser categórica, podría ser beneficiosa transformarla para que el modelo pueda capturar mejor las relaciones entre las tonalidades y la popularidad. Cada tonalidad podría tener un impacto diferente en la percepción de la música, y al convertir la variable categórica en dummy, permitiríamos que el modelo considere estas diferencias.
+
+También hemos calculado la diferencia de días entre la fecha de lanzamiento del álbum y la fecha en que la canción alcanza cierta popularidad, podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popu` qeu sea el inverso de la diferencua de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
+
+```{r}
+# Variable velocidad_popu
+#spotify$velocidad_popularidad <- 1/spotify$diferencia_dias
+#head(spotify[, c("diferencia_dias", "velocidad_popularidad")])
+```
+
+
 
 **- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**
 
+El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, podríamos calcular la tasa de cambio en la posición diaria o semanal de una canción para capturar cómo esté evolucionando su popularidad. Esto podría proporcionar infromación valiosa para el modelo, ya que capturaría la dinámica temporal de la popularidad de una canción.
+
+Además, podríamos utilizar técnicas de series temporales para modelar y predecir mejor los cambios en la popularidad a lo largo del tiempo. Sin embargo, creemos que esto dependería de tener datos temporales aún más detallados.
+
 
 # Apartado C
-## Fucnionamiento
+## Random Forest
+### Funcionamiento
+
 **Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
 
-## Requisitos
+El algoritmo **Random Forest** se utiliza para tareas de clasificaión y de regresión. Su estructura consiste en un conjunto de árboles de decisión, de ahí que se denomine ``bosque''. La estrategia principal del Random Forest se basa en la combinación de múltiples árboles de decisión mediante el siguiente proceso:
+
+1. **Muestreo aleatorio de datos:** Se toma el conjunto de entrenamiento y se crean múltiples subconjuntos mediante muestreo aleatorio con reemplazo.
+
+2. ** Construcción de árbolres de decisión:** Cada subconjunto se utiliza para entrenar un árbol de decisión mediante un proceso recursivo de partición basado en la mejor característica.
+
+3. **Valoración:** Se realiza la predicción para cada árbol y, en clasificación, se realiza una votación para determinar la clase final y en regresión, se promedian las predicciones.
+
+La idea clave es combinar la información de múltiples árboles para reducir sobreajuste y mejorar la generalización.
+
+
+### Requisitos
 **Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
 
-## Descripción de hiperparámetros
+Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de datos. Sin embargo, cambios que hemos hecho en los datos ayudarán al rendimiento como puede ser la normalización de los valores, la eliminación de datos no relevantes y el manejo de los valores nulos.
+
+### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
-## Grid Hiperparámetros
+### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
-## Resultados
+### Resultados
+**Describir los resultados del algoritmo.**
+
+## Deep learning
+### Funcionamiento
+**Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
+
+El **Deep Learning** se utiliza en redes neuronales profundas para modelar y resolver problemas complejos. Una red neuronal profunda consta de múltiples capas, incluyendo capas de entrada, capas ocultas y capas de salida por las que van pasando los datos. La estrategia es la siguiente:
+
+1. **Propagación hacia adelante (Forward Propagation):** Los datos se introducen en la red y se propagan hacia adelante a través de las capas, generando una predicción.
+
+2. **Cálculo de pérdida:** Se compara la predicción con las etiquetas reales para calcular la pérdida.
+
+3. **Retropropagación (Backward Propagation):** Se propaga hacia atrás la pérdida a través de la red, ajustando los pesos de las conexiones para minimizar la pérdida.
+
+4. **Optimización:** Se utiliza un algoritmo de optimización *(como Gradiente Descendente)* para actualizar los pesos y minimizar la pérdida.
+
+Este proceso se repite en varias épocas (iteraciones a través del conjunto de datos) durante el entrenamiento.
+
+### Requisitos
+**Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
+
+Los requisitos para el Deep Learning incluyen:
+
+- Normalización de variables: para que tengan una media cercana a cero y una desviación estándar similar.
+
+- Manejo de valores nulos: los datos deben estar limpios de valores nulos antes del entrenamiento.
+
+- Codificación de variables categóricas: las variables categóricas deben codificarse adecuadamente para ser utilizadas en la red neuronal.
+
+Todos estos requisitos han sido cumplidos gracias al proceso de preparación de datos que hemos llevado a cabo.
+
+### Descripción de hiperparámetros
+**Identificar y explicar cada uno de sus parámetros de configuración.**
+
+### Grid Hiperparámetros
+**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+### Resultados
+**Describir los resultados del algoritmo.**
+
+
+## Cluestering
+### Funcionamiento
+**Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
+
+El algoritmo de clustering se utiliza para agrupar datos similares entre sí en conjuntos llamados "clusters". Uno de los métodos más comunes es el k-means. Su estrategia es la siguiente:
+
+1. **Inicialización:** Se seleccionan aleatoriamente los centroides iniciales para los k clusters.
+
+2. **Asignación:** Cada punto de datos se asigna al cluster cuyo centroide es el más cercano.
+
+3. **Actualización:** Se recalculan los centroides de los clusters basándose en los puntos de datos asignados.
+
+4. **Iteración:** Se repiten los pasos 2 y 3 hasta que los centroides convergen o se alcanza un número máximo de iteraciones.
+
+El resultado es un conjunto de clusters donde los puntos de datos dentro de cada cluster son más similares entre sí que con aquellos en otros clusters.
+
+### Requisitos
+**Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
+
+Los requisitos para el clustering, especialmente para k-means, incluyen:
+
+- Escalado de variables: Dado que el algoritmo de k-means se basa en distancias euclidianas, es importante escalar las variables para que tengan la misma influencia en el cálculo de las distancias. Esto ya lo hemos contemplado en la preparación de los datos.
+
+- Manejo de valores nulos: Los valores nulos pueden afectar la calidad del clustering, por lo que es importante tratarlos antes del entrenamiento, lo cual hemos ya.
+
+### Descripción de hiperparámetros
+**Identificar y explicar cada uno de sus parámetros de configuración.**
+
+### Grid Hiperparámetros
+**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+### Resultados
 **Describir los resultados del algoritmo.**
 
 # Apartado D
