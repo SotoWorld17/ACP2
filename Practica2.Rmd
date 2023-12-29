@@ -21,6 +21,7 @@ library(reshape2)
 library(GGally)
 library(ggfortify)
 library(caret)
+library(dplyr)
 library(FactoMineR)
 library(factoextra)
 library(plotly)
@@ -310,6 +311,8 @@ myplot
 ```
 Vemos como casi todas las canciones tienen un `time_signature` de 4, y que no hay ninguna con 2. Por lo tanto seguramente esta variable sea un poco indiferente a la hora de conocer la popularidad. Pero nos ayudará a determinar que la mayoría de canciones se hacen populares cuando su `time_signature` es de 4.
 
+
+*TODO*
 Antes de comenzar con las preguntas del apartado 1, nos gustaría hacer un pequeño PCA para mostrar si con las variables que tenemos numéricas seríamos capaces de determinar algo de información sobre la popularidad.
 
 ```{r}
@@ -353,7 +356,7 @@ fviz_pca_var(pca_result, col.var = "contrib",
              repel = TRUE)
 ```
 
-Debido a la gran cantidad de datos es casi imposible ver lo que nos muestra este PCA, aunque podemos ver la parte representativa de cada componente en el análisis. Tambien se nos dice que variables como weekly_movement, energy, loudness... presentan una gran variación para nuestros datos.
+Debido a la gran cantidad de datos es casi imposible ver lo que nos muestra este PCA, aunque podemos ver la parte representativa de cada componente en el análisis. También se nos dice que variables como weekly_movement, energy, loudness... Presentan una gran variación para nuestros datos.
 
 ```{r}
 (VE <- pca_result$sdev^2)
@@ -363,8 +366,9 @@ cumsum(round(PVE, 2))
 Vemos que con 11 de estas variables ya seríamos capaces de procesar un 98% de la popularidad. Y eso que solo estamos trabajando con las numéricas, 12 variables sobre las 26 disponibles inicialmente son muy buenas para entrenar un modelo. Lo que nos lleva a pensar que quizás no necesitemos de las otras variables para hacer un buen trabajo.
 
 Finalmente vamos a analizar un poco de la variable `country` la que hemos eliminado anteriormente sin tener reparo en que esta variable tendrá canciones con popularidad distinta en cada país, vamos a quedarnos con aquellas con mayor popularidad y por lo tanto vamos a ver solo un poco de como afectan las variables numéricas a los distintos países.
+*TODO*
 
-```{r}
+```{r, eval=FALSE}
 library(rnaturalearth)
 library(ggplot2)
 library(purrr)
@@ -417,7 +421,8 @@ maps <- map(variables, function(var) {
 
 plot_grid(plotlist = maps, ncol = 3)
 ```
-Aqui podemos ver como la 'danceability' de las canciones más populares sera distinta en cada país. Y otras características como por ejemplo la `valence` en Oceanía disfrutaran de canciones más calmadas que por ejemplo en sur América.
+
+Aquí podemos ver como la `danceability` de las canciones más populares sera distinta en cada país. Y otras características como por ejemplo la `valence` en Oceanía disfrutaran de canciones más calmadas que por ejemplo en sur América.
 
 ```{r}
 rm(analysis_data, analysis_data2, analysis_datasorted,mean_popularity, canciones, mymelt, artist, pcas, pca_result, spotify_mean, spotify1, world, world_spotify, myplot, maps, analysisContinuas, analysis_pca, analysis_pca_estatus, artistastop, categories, diferencia_dias, N, popularity_counts, PVE, variables, VE)
@@ -497,7 +502,8 @@ Pensamos que las variables que más relación tienen con la popularidad son los 
 # Apartado B
 ## Preparación de datos
 
-Para empezar vamos a eliminar la variable X, ya que creemos que es una variable nula que se ha colado en la lectura del csv, después vamos a pasar a variables categóricas key y mode ya que actualmente se consideran como numéricas. Y convertiremos las clases `album_release_date` y `snapshot_date` en fechas, en lugar de cadenas para despues poder tratar con ellas.
+Para empezar vamos a **eliminar la variable X**, ya que creemos que es una variable nula que se ha colado en la lectura del csv, después vamos a pasar a variables categóricas key y mode ya que actualmente se consideran como numéricas. Y convertiremos las clases `album_release_date` y `snapshot_date` en fechas, en lugar de cadenas para despues poder tratar con ellas.
+
 ```{r}
 spotify = spotify[,-1]
 
@@ -509,7 +515,7 @@ spotify$snapshot_date = as.Date(spotify$snapshot_date)
 
 ```
 
-A continuación vamos a mirar los NA's que presentan nuestras variables.
+A continuación vamos a mirar los **NA's** que presentan nuestras variables.
 ```{r}
 colSums(is.na(spotify))
 ```
@@ -534,20 +540,116 @@ y aquí la cantidad de nulos que coinciden con `name`y `album_release_date`
 table(is.na(spotify$name), is.na(spotify$album_name))
 ```
 Lo que vamos a hacer es eliminar los 22 valores nulos de estas distintas filas, ya que consideramos que son pocos los datos de los que vamos a prescindir.
+
 ```{r}
 spotify <- spotify[complete.cases(spotify$album_release_date), ]
 
 colSums(is.na(spotify))
 ```
 Ahora podemos ver que solo quedan 1452 nulos en la columna `country` del dataset. La estrategia que vamos a utilizar es omitir estas filas también, ya que contando actualmente con 105647 datos, creemos que podemos prescindir de estos 1452 nulos, dejándonos así con 104195 valores para nuestro trabajo de investigación.
+
 ```{r}
 table(is.na(spotify$country))
 spotify <- spotify[complete.cases(spotify$country), ]
 ```
+A continuación, vamos a ver si tenemos **outliers** y en caso de verlos, los eliminaremos ya que queremos trabajar con los datos más representativos y cercanos entre sí, dejando así un mejor dataset para la predicción.
 
+```{r}
+analysisContinuas= spotify[ , c("popularity", "duration_ms", "danceability","energy", "loudness", "speechiness", "acousticness", "liveness", "instrumentalness", "valence", "tempo")]
+mymelt=melt(analysisContinuas, id.vars=1, value.name="FeatureValue", variable.name="Feature")
+ 
 
+unique_features <- unique(mymelt$Feature)
+num_columns <- 5
+num_rows <- ceiling(length(unique_features) / num_columns)
+plots_list <- list()
 
-Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta obtiene una nueva posición en el ranking, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de días que una canción tardó en hacerse popular, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
+# Tamaño total de la cuadrícula
+total_width <- 15
+total_height <- 20
+single_plot_width <- total_width / num_columns
+single_plot_height <- total_height / num_rows
+
+# Itera a través de cada característica
+for (i in seq_along(unique_features)) {
+  subset_data <- mymelt[mymelt$Feature == unique_features[i], ]
+   current_color <- colorspie[(i - 1) %% length(colorspie) + 1]
+  
+  # Crea el gráfico con ggplot usando los datos filtrados
+  plot <- ggplot(data=subset_data, aes(x=Feature, y=FeatureValue, color=Feature, fill=Feature)) +
+    geom_boxplot(alpha=0.6) +
+    scale_fill_manual(values = current_color) +
+    scale_color_manual(values = current_color) +
+    ggtitle(paste(unique_features[i])) +
+    theme_minimal() + 
+    theme(legend.position="none",
+          axis.title.x = element_blank(),  # Oculta la etiqueta del eje x
+          axis.title.y = element_blank())
+  
+  # Agrega el gráfico a la lista
+  plots_list[[i]] <- plot
+  
+  summary(mymelt)
+}
+
+# Organiza los gráficos en una cuadrícula y visualízalos
+grid.arrange(grobs = plots_list, ncol = num_columns, widths = rep(single_plot_width, num_columns), heights = rep(single_plot_height, num_rows))
+
+```
+
+Un dato será *outlier* si se encuentra más allá de 3/2 del rango de intercuartil
+```{r}
+analysisContinuas= spotify[ , c( "duration_ms", "danceability","energy", "loudness", "speechiness", "acousticness", "liveness", "instrumentalness", "valence", "tempo")]
+
+iqr_values <- apply(analysisContinuas, 2, function(x) {
+  q1 <- quantile(x, 0.25)
+  q3 <- quantile(x, 0.75)
+  iqr <- q3 - q1
+  limite_inferior <- q1 - 1.5 * iqr
+  limite_superior <- q3 + 1.5 * iqr
+  
+  outliers_count <- sum(x < limite_inferior | x > limite_superior)
+  
+  return(list(Q1 = q1, Q3 = q3, IQR = iqr, LimiteInferior = limite_inferior, LimiteSuperior = limite_superior, Outliers = outliers_count))
+})
+
+for (i in seq_along(iqr_values)) {
+  cat("Variable:", names(iqr_values)[i], "\n")
+  cat("  Primer cuartil (Q1):", iqr_values[[i]]$Q1, "\n")
+  cat("  Tercer cuartil (Q3):", iqr_values[[i]]$Q3, "\n")
+  cat("  IQR:", iqr_values[[i]]$IQR, "\n")
+  cat("  Límite inferior:", iqr_values[[i]]$LimiteInferior, "\n")
+  cat("  Límite superior:", iqr_values[[i]]$LimiteSuperior, "\n")
+  cat("  Número de outliers", iqr_values[[i]]$Outliers, "\n")
+  cat("\n\n")
+}
+```
+
+A pesar de ver una gran cantidad de datos outliers al hacer el cálculo teórico, creemos que no son datos que haya que borrar porque hay muchos juntos como ocurre en la gráfica con `instrumentalness`, que por la representación se ve que no hay ningún punto de datos que destaque por estar muy lejano al resto. 
+
+Por otra parte, apoyándonos en los datos visuales de la gráfica y en los que acabamos de obtener, vamos a eliminar algunos valores de: `duration_ms`, `loudness` y `speechiness`.
+
+```{r}
+spotifyEliminacion <- spotify
+# Marcamos los datos que eliminaremos de duration_ms
+spotifyEliminacion$duration_delete <- if_else(spotifyEliminacion$duration_ms > 570000, TRUE, FALSE)
+sum(spotifyEliminacion$duration_ms > 570000)
+# Marcamos los datos de loudness
+spotifyEliminacion$loudness_delete <- if_else(spotifyEliminacion$loudness > 0 | spotifyEliminacion$loudness< -25, TRUE, FALSE)
+sum(spotifyEliminacion$loudness< -25 | spotifyEliminacion$loudness > 0)
+# Marcamos los datos de speechiness
+spotifyEliminacion$speechiness_delete <- if_else(spotifyEliminacion$speechiness > 0.7, TRUE, FALSE)
+sum(spotifyEliminacion$speechiness > 0.7)
+
+# Eliminamos estas filas
+spotifyEliminacion <- spotifyEliminacion %>%
+  filter(!(duration_delete | loudness_delete | speechiness_delete))
+spotify <- spotifyEliminacion[, 1:25]
+
+rm(spotifyEliminacion); rm(subset_data); 
+```
+
+Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta obtiene una nueva posición en el ranking, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de **días que una canción tardó en hacerse popular**, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
 
 ```{r}
 diferencia_dias = as.numeric(spotify$snapshot_date - spotify$album_release_date)
@@ -556,68 +658,27 @@ spotify$diferencia_dias = diferencia_dias
 spotify$diferencia_dias = ifelse(spotify$diferencia_dias < 0, 0, spotify$diferencia_dias)
 ```
 
-Otra idea que nos surge al observar los datos es que distintas canciones están repetidas y tienen una diferente popularidad dependiendo del país, al principio pensamos que sería una buena idea organizarlas dependiendo del continente en la que esta canción se volvió popular. Recapacitando sobre esta primera interpretación, pensamos que no es tan buena idea, por ejemplo las personas en Sudamérica , no escucharán la misma música que las personas en Norteamérica  debido a que el idioma más hablado en ambas áreas es distinto. Por lo que organizaremos `country` en una nueva columna, dividiendo los países del continente americano en northAmerica y southAmerica. Para ello vamos a visualizar los distintos paises primeros.
+Ahora vamos a calcular la **popularidad previa** de canciones en un conjunto de datos.
 
-```{r}
-diccionario_continentes <- c(
-  AE = "AS", AR = "SA", AT = "EU", AU = "OC",
-  BE = "EU", BG = "EU", BO = "SA", BR = "SA",
-  BY = "EU", CA = "SA", CH = "EU", CL = "SA",
-  CO = "SA", CR = "SA", CZ = "EU", DE = "EU",
-  DK = "EU", DO = "SA", EC = "SA", EE = "EU",
-  EG = "AF", ES = "EU", FI = "EU", FR = "EU",
-  GB = "EU", GR = "EU", GT = "SA", HK = "AS",
-  HN = "SA", HU = "EU", ID = "AS", IE = "EU",
-  IL = "AS", IN = "AS", IS = "EU", IT = "EU",
-  JP = "AS", KR = "AS", KZ = "AS", LT = "EU",
-  LU = "EU", LV = "EU", MA = "AF", MX = "NA",
-  MY = "AS", NG = "AF", NI = "SA", NL = "EU",
-  NO = "EU", NZ = "OC", PA = "SA", PE = "SA",
-  PH = "AS", PK = "AS", PL = "EU", PT = "EU",
-  PY = "SA", RO = "EU", SA = "AS", SE = "EU",
-  SG = "AS", SK = "EU", SV = "SA", TH = "AS",
-  TR = "AS", TW = "AS", UA = "EU", US = "NA",
-  UY = "SA", VE = "SA", VN = "AS", ZA = "AF"
-)
-
-spotify$continent = diccionario_continentes[spotify$country]
-```
-A continuación, como hemos visto que muchas canciones se repiten en los distintos paises, vamos a eliminar los duplicados que comparten el nombre de la canción, el país y la popularidad de los datos; consideramos una interesante estrategia, dejando la primera y ultima aparición de cada dato y aquellos datos que no están repetidos. Al juntarlos, sin embargo, hemos ocasionado que se repitan algunas filas, para ello utilizamos `unique`, en la que tenemos en cuenta todas las variables por lo que eliminamos todas las filas que se repiten completamente dejando solo una instancia de ellas.
-
-
-```{r}
-comprobar_duplicados = spotify[, c("name","country","popularity")] 
-# sum(duplicated(comprobar_duplicados))
-
-spotify_primera_aparicion = spotify[!duplicated(comprobar_duplicados), ]
-
-spotify_ultima_aparicion = spotify[!duplicated(comprobar_duplicados, fromLast = TRUE), ]
-
-spotify_pyu <- rbind(spotify_primera_aparicion, spotify_ultima_aparicion)
-
-spotifyNoDup =  spotify[!duplicated(comprobar_duplicados) & !duplicated(comprobar_duplicados, fromLast = TRUE), ]
-
-# 
-# comprobar_duplicados2 = spotifyNoDup[, c("name","country","popularity", "continent")] 
-# sum(duplicated(comprobar_duplicados2))
-# 
-
-spotifyFinal = rbind (spotify_pyu, spotifyNoDup)
-# (duplicated(comprobar_duplicados2))
-# sum(duplicated(spotifyFinal))
-
-spotifyFinal_sin_duplicados <- unique(spotifyFinal)
+```{r secuencial}
+spotify <- spotify %>%
+  group_by(spotify_id,country) %>%
+  arrange(snapshot_date) %>%
+  mutate(prev_popularity=if_else(as.numeric(difftime(as.Date(snapshot_date), 
+                              lag(as.Date(snapshot_date)), units = "days")) >= 1 & 
+                              as.numeric(difftime(as.Date(snapshot_date), lag(as.Date(snapshot_date)),
+                              units = "days")) <= 7, lag(popularity), 0))
 ```
 
-```{r}
-spotify = spotifyFinal_sin_duplicados
-rm(spotifyFinal_sin_duplicados, spotify_primera_aparicion, spotify_ultima_aparicion, spotify_pyu, spotifyFinal, spotifyNoDup, diferencia_dias, diccionario_continentes, comprobar_duplicados)
-```
+Primero organizamos la información por identificador y país, asegurándose de que los registros estén ordenados; luego, para cada canción se determina la popularidad que tenía en fechas anteriores, considerando únicamente aquellas con una diferencia de 1 a 7 días respecto a la fecha actual. El resultado es una nueva columna llamada `prev_popularity`, que refleja la popularidad previa de cada canción en el tiempo. 
+ 
 
 Hasta ahora no hemos hecho nada más que añadir columnas, pero sabemos de antemano que no todas ellas nos van a ser de utilidad para entrenar nuestro modelo. Sin embargo, no las hemos eliminado anteriormente para hacer la limpieza de datos pero ahora procedemos a quitar las columnas `spotify_id`, `name`, `artists`, `album_name`, `album_release_date`   
+
 ```{r}
 spotify = spotify[, -c(1,2,3,12,13)]
 ```
+
 
 Anteriormente hemos agrupado los argumentos `album_release_date` y `snapshot_date` en la variable que recoge la diferencia de días. Por lo que ahora también consideramos oportuno quitar la variable `snapshot_date` ya que ya tenemos en el dataset el número de días que la canción ha tardado en tener la respectiva `popularity`.
 
@@ -633,13 +694,14 @@ Cómo explicábamos antes, hemos considerado crear la variable `continente` para
 spotify = spotify[, -c(4,21)]
 ```
 
+
 **Respóndase a las siguientes preguntas en relación a la preparación de datos.**
 
-**- ¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
+\* **¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
 
-Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo`?, `diferencia_dias`.
+Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo`, `diferencia_dias`.
 
--`duration_ms`: pensamos que  una mejor forma de analizar la duración de las canciones es si normalizamos estos valores con segundos en vez de milisegundos pues así no tenemos datos muy específico que, además, no creemos que una diferencia de milisegundos entre las canciones afecte a los resultados y de esta forma es más fácil comparar las duraciones pues en spotify el valor mínimo que se guarda de cara al público es en segundos.
+- `duration_ms`: pensamos que  una mejor forma de analizar la duración de las canciones es si normalizamos estos valores con segundos en vez de milisegundos pues así no tenemos datos muy específico que, además, no creemos que una diferencia de milisegundos entre las canciones afecte a los resultados y de esta forma es más fácil comparar las duraciones pues en spotify el valor mínimo que se guarda de cara al público es en segundos.
 
 ```{r}
 spotiNormalizado = spotify
@@ -647,8 +709,7 @@ spotiNormalizado$duration_sec <- trunc(spotiNormalizado$duration_ms / 1000)
 spotiNormalizado <- subset(spotiNormalizado, select = -c(duration_ms))
 ```
 
-
--`loudness`: vamos a normalizar los decibelios en [0,1] pues los valores van de [-31.042,1.155] y para ello sumaremos a cada dato 31.042 y lo dividiremos entre (1.155+31.042).
+- `loudness`: vamos a normalizar los decibelios en [0,1] pues los valores van de [-31.042,1.155] y para ello sumaremos a cada dato 31.042 y lo dividiremos entre (1.155+31.042).
 
 ```{r}
 max <- max(spotiNormalizado$loudness)
@@ -656,8 +717,7 @@ min <- min(spotiNormalizado$loudness)
 spotiNormalizado$loudness <- (spotiNormalizado$loudness-min)/(max-min)
 ```
 
-
--`tempo`: el tempo lo vamos a normalizar de una forma parecida al anterior pues su rango de valores es [47.914,217.969] y nos interesaría que estuviese en [0,1] por lo que le restaremos 47.914 al valor del dato y lo dividiremo entre (47.914+217.969).
+- `tempo`: el tempo lo vamos a normalizar de una forma parecida al anterior pues su rango de valores es [47.914,217.969] y nos interesaría que estuviese en [0,1] por lo que le restaremos 47.914 al valor del dato y lo dividiremo entre (47.914+217.969).
 
 ```{r}
 max <- max(spotiNormalizado$tempo)
@@ -665,26 +725,17 @@ min <- min(spotiNormalizado$tempo)
 spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
 ```
 
-**- ¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
+\* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
-Sí, consideramos que podría ser interesante transformar la variable `key` en variables dummy. La variable `key` representa la tonalidad de la canción, y al ser categórica, podría ser beneficiosa transformarla para que el modelo pueda capturar mejor las relaciones entre las tonalidades y la popularidad. Cada tonalidad podría tener un impacto diferente en la percepción de la música, y al convertir la variable categórica en dummy, permitiríamos que el modelo considere estas diferencias.
-
-También hemos calculado la diferencia de días entre la fecha de lanzamiento del álbum y la fecha en que la canción alcanza cierta popularidad, podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popu` qeu sea el inverso de la diferencua de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
+Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias`. También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
 
 ```{r}
-# Variable velocidad_popu
-#spotify$velocidad_popularidad <- 1/spotify$diferencia_dias
-#head(spotify[, c("diferencia_dias", "velocidad_popularidad")])
+spotiNormalizado$velocidad_popularidad <- 1/spotify$diferencia_dias
 ```
 
+\* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
 
-
-**- ¿Cómo podría aprovecharse el carácter secuencial de los datos?**
-
-El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, podríamos calcular la tasa de cambio en la posición diaria o semanal de una canción para capturar cómo esté evolucionando su popularidad. Esto podría proporcionar infromación valiosa para el modelo, ya que capturaría la dinámica temporal de la popularidad de una canción.
-
-Además, podríamos utilizar técnicas de series temporales para modelar y predecir mejor los cambios en la popularidad a lo largo del tiempo. Sin embargo, creemos que esto dependería de tener datos temporales aún más detallados.
-
+El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, un poco más arriba hemos creado una variable `prev_popularity` gracias a que las fechas son secuenciales y podemos acceder a la popularidad a lo largo de los días. De esta forma podemos analizar cómo cambia la popularidad de una canción a lo largo de la semana anterior, proporcionando información valiosa para entender patrones y tendencias en el comportamiento de reproducción de las canciones en la plataforma.
 
 # Apartado C
 ## Random Forest
@@ -696,7 +747,7 @@ El algoritmo **Random Forest** se utiliza para tareas de clasificaión y de regr
 
 1. **Muestreo aleatorio de datos:** Se toma el conjunto de entrenamiento y se crean múltiples subconjuntos mediante muestreo aleatorio con reemplazo.
 
-2. ** Construcción de árbolres de decisión:** Cada subconjunto se utiliza para entrenar un árbol de decisión mediante un proceso recursivo de partición basado en la mejor característica.
+2. **Construcción de árbolres de decisión:** Cada subconjunto se utiliza para entrenar un árbol de decisión mediante un proceso recursivo de partición basado en la mejor característica.
 
 3. **Valoración:** Se realiza la predicción para cada árbol y, en clasificación, se realiza una votación para determinar la clase final y en regresión, se promedian las predicciones.
 
