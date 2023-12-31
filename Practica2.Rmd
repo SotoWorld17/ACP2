@@ -25,6 +25,7 @@ library(dplyr)
 library(FactoMineR)
 library(factoextra)
 library(plotly)
+library(mlbench)
 ```
 
 ```{r setup, include=FALSE}
@@ -730,7 +731,9 @@ spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
 Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias`. También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
 
 ```{r}
-spotiNormalizado$velocidad_popularidad <- 1/spotify$diferencia_dias
+epsilon <- 1e-10
+# Calcular velocidad_popularidad con epsilon para evitar divisiones entre 0
+spotiNormalizado$velocidad_popularidad <- 1 / (spotiNormalizado$diferencia_dias + epsilon)
 ```
 
 \* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
@@ -761,6 +764,31 @@ Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de dat
 
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
+
+```{r}
+set.seed(123)
+
+# Definir las variables de entrada y salida
+spotirf.Var.Salida.Usada <- c("popularity")
+spotirf.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotirf.Var.Salida.Usada)
+
+# Crear una partición del 80% para entrenamiento y 20% para prueba
+spotirf.Particion <- createDataPartition(spotiNormalizado[[spotirf.Var.Salida.Usada]], 
+                                       p = 0.8, 
+                                       list = FALSE)
+
+# Crear conjuntos de entrenamiento y prueba
+spotirf.Datos.Entrenamiento <- spotiNormalizado[spotirf.Particion, ]
+spotirf.Datos.Prueba <- spotiNormalizado[-spotirf.Particion, ]
+
+# Crear modelos utilizando el método train() de Caret
+system.time(
+  spotirf.modelo.rf <- train(spotiNormalizado[spotirf.Vars.Entrada.Usadas],
+                           spotiNormalizado[[spotirf.Var.Salida.Usada]],
+                           method = 'rf')
+)
+```
+
 
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
@@ -797,6 +825,44 @@ Los requisitos para el Deep Learning incluyen:
 
 Todos estos requisitos han sido cumplidos gracias al proceso de preparación de datos que hemos llevado a cabo.
 
+```{r}
+set.seed(123)
+
+# Definir las variables de entrada y salida
+spotiRNN.Var.Salida.Usada <- c("popularity")
+spotiRNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotiRNN.Var.Salida.Usada)
+
+# Crear una partición del 80% para entrenamiento y 20% para prueba
+spotiRNN.Particion <- createDataPartition(spotiNormalizado[[spotiRNN.Var.Salida.Usada]], 
+                                         p = 0.8, 
+                                         list = FALSE)
+
+# Crear conjuntos de entrenamiento y prueba
+spotiRNN.Datos.Entrenamiento <- spotiNormalizado[spotiRNN.Particion, ]
+spotiRNN.Datos.Prueba <- spotiNormalizado[-spotiRNN.Particion, ]
+
+# Configurar la red neuronal
+modelo <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", input_shape = length(spotiRNN.Vars.Entrada.Usadas)) %>%
+  layer_dense(units = 1)
+
+# Compilar el modelo
+modelo %>% compile(
+  loss = "mean_squared_error",
+  optimizer = optimizer_rmsprop(),
+  metrics = c("mean_absolute_error")
+)
+
+# Entrenar el modelo
+historial_entrenamiento <- modelo %>% fit(
+  as.matrix(spotiRNN.Datos.Entrenamiento[, spotiRNN.Vars.Entrada.Usadas]),
+  spotiRNN.Datos.Entrenamiento[[spotiRNN.Var.Salida.Usada]],
+  epochs = 10,
+  batch_size = 32,
+  validation_split = 0.2 #######
+)
+```
+
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
@@ -832,6 +898,30 @@ Los requisitos para el clustering, especialmente para k-means, incluyen:
 
 - Manejo de valores nulos: Los valores nulos pueden afectar la calidad del clustering, por lo que es importante tratarlos antes del entrenamiento, lo cual hemos ya.
 
+```{r}
+set.seed(123)
+
+# Definir las variables de entrada y salida
+spotiKNN.Var.Salida.Usada <- c("popularity")
+spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotiKNN.Var.Salida.Usada)
+
+# Crear una partición del 80% para entrenamiento y 20% para prueba
+spotiKNN.Particion <- createDataPartition(spotiNormalizado[[spotiKNN.Var.Salida.Usada]], 
+                                       p = 0.8, 
+                                       list = FALSE,
+                                       times = 1)
+
+# Crear conjuntos de entrenamiento y prueba
+spotiKNN.Datos.Entrenamiento <- spotiNormalizado[spotiKNN.Particion, ]
+spotiKNN.Datos.Prueba <- spotiNormalizado[-spotiKNN.Particion, ]
+
+# Crear modelos utilizando el método train() de Caret
+system.time(
+  spotiKNN.modelo.knn <- train(x = spotiKNN.Datos.Entrenamiento[, spotiKNN.Vars.Entrada.Usadas],
+                               y = spotiKNN.Datos.Entrenamiento[[spotiKNN.Var.Salida.Usada]],
+                               method = 'knn')
+)
+```
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
