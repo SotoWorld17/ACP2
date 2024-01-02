@@ -1,0 +1,248 @@
+---
+title: "Grids de hiperparámetros en Caret, árboles y bosques aleatorios"
+author: Apredizaje Computacional, Grado en Ingeniería Informática. Universidad de Murcia. Juan A. Botía y Antonio Guillén
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Grids de hiperparámetros en Caret
+
+Cuando queremos entrenar un algoritmo de Machine Learning (ML) lo primero que tiene sentido hacer es identificar cuáles son sus parámetros de configuración y saber lo que significa cada uno de ellos. Esto se refiere a que, para cada uno de los algoritmos de ML que quieran entrenar, se han de enumerar y explicar qué cometido tiene cada uno de los parámetros que usa Caret para optimizar automáticamente el rendimiento del algoritmo. Supongamos que queremos entrenar un algoritmo de `rpart`, que se refiere a *Recursive PARTitioning*, es decir, un árbol de decisión. Pues bien, para obtener información de los parámetros usados por nuestro algoritmo `rpart` podemos hacer 
+
+```{r}
+library(caret)
+rpartInfo = getModelInfo("rpart")
+length(rpartInfo)
+names(rpartInfo)
+```
+
+En la variable `rpartInfo` obtenemos la descripción de cinco algoritmos (al menos en mi máquina hay cinco instalados). Solamente nos interesa el del paquete `rpart`` así que restringimos la explicación a este, haciendo
+
+```{r}
+rpartInfo = rpartInfo$rpart
+```
+
+Y ahora ya podemos consultar sus parámetros de configuración, mediante `$parameters`.
+
+```{r}
+rpartInfo$parameters
+```
+
+Y como vemos, es accesible para este algoritmo un único parámetro de configuración que se refiere al parámetro de complejidad del árbol, el cual hace referencia a la mejora mínima del modelo necesaria en cada nodo. Este parámetro le dice al algoritmo cuándo parar de dividirse o crecer, de forma que un valor próximo a 1 de este parámetro corresponde a un árbol sin divisiones y un valor de 0 a un árbol de profundidad máxima. Adicionalmente, para reducir el tiempo de computación, el algoritmo empleado no realiza una partición si la proporción de reducción del error es inferior a este valor (valores más grandes simplifican el modelo y reducen el tiempo de computación).
+
+En todo caso, y dado que sabemos que es el paquete R `rpart` el que implementa el algoritmo `rpart`` tal y como está integrado en Caret, siempre podemos ir al repositorio CRAN a consultar la documentación <https://cran.r-project.org/web/packages/rpart/index.html> para averiguar más sobre su parámetro. Concretamente, y para este algoritmo hay una vignette (suele ser un tutorial en pdf, o un HTML que explica el algoritmo de una forma más didáctica que el manual de referencia) accesible desde la página <https://cran.r-project.org/web/packages/rpart/vignettes/longintro.pdf>. Ahí podemos encontrar información más que de sobra para documentar dicho algoritmo.
+
+
+
+Una vez que hemos visto cómo obtener información sobre los hiper-parámetros de nuestro algoritmo, vamos a ver cómo diseñar nuestra propia estrategia para dar valores a dichos parámetros cuando la estrategia de optimización del modelo está basada en una búsqueda en malla (i.e. `grid search`). Este apartado responde a la petición de la práctica 2 (Apartado C) que especifica claramente
+
+> Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.
+
+Basándonos en el ejemplo de la documentación (accesible en <https://csantill.github.io/RTuningModelParameters/>) que usa el conjunto Pima para ejemplificar el uso de `rpart2`, que implementa también un árbol de decisión pero en vez de usar el parámetro de complejidad `cp` para optimizar el modelo, utiliza la profundidad máxima del árbol `maxdepth`. Nosotros usaremos `rpart`, pero antes de eso recordemos que nuestro método `train()` en caret, por defecto, crea una parrilla de combinaciones de valores de parámetros de configuración y que usa cada fila de dicha parrilla para configurar diferentes instancias de nuestro algoritmo, las ejecuta todas, las evalúa según el método que hayamos indicado con `trainControl` y luego reporta un modelo final con la fila de la parrilla correspondiente al algoritmo cuyos valores para los hiper-parámetros, genera mejores estimadores del rendimiento. 
+
+Veamos cuál es la estrategia concreta de la que se hace uso por defecto
+
+```{r}
+rpartInfo$grid
+```
+
+Sin embargo, en este caso, el grid para `rpart` se basa en entrenar un modelo inicial usando `rpart` y quedarse con un vector de valores `cp` de longitud `len`.
+
+Si queremos comprobar que, en realidad, está haciendose uso del grid de esta forma, podemos usarlo con el conjunto Pima como sigue
+
+```{r}
+library(caret)
+library(mlbench)
+data("PimaIndiansDiabetes")
+set.seed(998)
+inTraining <- createDataPartition(PimaIndiansDiabetes$diabetes, times=1,p = .75, list = FALSE)
+training <- PimaIndiansDiabetes[ inTraining,]
+testing  <- PimaIndiansDiabetes[-inTraining,]
+
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+rpartFit1 <- train(diabetes ~ ., data = training, 
+                 method = "rpart", 
+                 trControl = fitControl
+                 )
+rpartFit1
+```
+
+Y, como podemos comprobar, realiza experimentos para los tres valores de que aparecen indicados. 
+Ahora bien, si en realidad queremos pasar nuestra parrilla propia de valores, como en el ejemplo siguiente, 
+
+```{r}
+mygrid = expand.grid(cp = c(0.01,0.05,0.1,0.15,0.2,0.25,0.3))
+print(mygrid)
+```
+
+lo podemos hacer como sigue
+
+```{r}
+fitControl2 <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+rpartFit2 <- train(diabetes ~ ., data = training, 
+                 method = "rpart", 
+                 trControl = fitControl2,
+                 tuneGrid=mygrid)
+rpartFit2
+
+```
+
+Ahora, podemos quedarnos con el mejor modelo, que se corresponde al modelo con $cp=0.01$ mediante `$finalModel` y, como `rpart` genera un árbol de decisión, podemos ver los nodos y las conexiones entre ellos haciendo un print del modelo:
+
+```{r}
+finalModel<-rpartFit2$finalModel
+print(finalModel)
+
+```
+
+Donde los * denotan los nodos terminales. Además, podemos ver de forma gráfica el árbol de decisión haciéndo uso de `rpart.plot::rpart.plot()` sobre modelo final.
+
+```{r}
+library(rpart.plot)
+rpart.plot(finalModel)
+
+```
+
+En donde para cada nodo vemos la etiqueta por la que se clasificarían los ejemplos si se usara como nodo hoja, el porcentaje de ejemplos con valor `pos` que pasan por el nodo y el porcentaje total de ejemplos del conjunto de train que pasan por el nodo.
+
+También se pueden obtener la importancia de las variables para la predicción del modelo 
+
+```{r}
+finalModel$variable.importance
+```
+
+Obteniendo que las variables más importantes, en orden de más importante a menos es: glucose, age, mass, pregnant, pressure, insulin, predigree y triceps. Si quisiéramos que la importancia de las variables sumen un 100%, las dividimos entre la suma de todas ellas y obtenemos el porcentaje de importancia de cada variable con respecto del total:
+
+```{r}
+round(finalModel$variable.importance/sum(finalModel$variable.importance)*100)
+```
+
+# Bosques Aleatorios (Random Forest) en R usando Caret
+
+Después de haber explorado el algoritmo `rpart` para la creación de árboles de decisión, vamos a ver cómo podemos implementar los Bosques Aleatorios. Los Bosques Aleatorios son una técnica de aprendizaje automático que opera construyendo múltiples árboles de decisión durante el entrenamiento y generando la clase que es elegida con mayor frecuencia en todos los árboles individuales para la clasificación, o la media/mediana de las predicciones individuales para la regresión.
+
+En R, la biblioteca caret proporciona varias implementaciones de Bosques Aleatorios. Sin embargo, en esta sección, vamos a utilizar la función ranger(). La razón principal para elegir ranger es su eficiencia. ranger es conocida por ser una de las implementaciones más rápidas de Bosques Aleatorios disponibles en R, lo que nos permitirá entrenar modelos de Bosques Aleatorios en grandes conjuntos de datos de manera eficiente (ver <http://imbs-hl.github.io/ranger/>).
+
+De este modo, vamos a entrenar un bosque aleatorio con la implementación `ranger` en Caret haciendo uso de un grid de hiperparámetros como explicamos anteriormente. Para ello primero vemos los posibles parámetros del modelo `ranger`:
+
+```{r}
+rangerInfo = getModelInfo("ranger")
+rangerInfo = rangerInfo$ranger
+rangerInfo$parameters
+```
+
+Y como vemos, son accesibles para este algoritmo tres parámetros de configuración que se refieren, respectivamente, 
+
+* el número de variables a considerar en cada división del árbol. 
+
+* la regla que se utiliza para dividir cada nodo. La opción por defecto es “gini” para clasificación y “variance” para regresión,
+
+* el tamaño mínimo de los nodos del árbol.
+
+Para más información sobre los parámetros y sus posibles valores consultar la documentación del método (<https://cran.r-project.org/web/packages/ranger/ranger.pdf.
+
+¿Cómo crea Caret por defecto la parrilla de parámetros? Consultamos su código fuente y vemos que 
+
+* splitrule: si la forma de optimizar los hiperparámetros es por parrilla, la regla de split es al menos `gini` cuando el árbol es de clasificación y `variance` cuando es de regresión
+
+* mtry: el número de predictores para crear el split correspondiente viene determinado por `var_seq`, función específica de `ranger`, 
+
+* el número de ejemplos por debajo del cual un nodo puede considerarse hoja será 1 para clasificación y 5  para regresión (el número mínimo de valores para generar una media decente como valor de regresión)
+
+```{r}
+rangerInfo$grid
+```
+
+
+Para demostrar que los bosques aleatorios funcionan bien con conjuntos de datos grandes vamos a utilizar un conjunto de datos `Khan` del paquete de R `ISLR2`, el cual trabaja con muestras de tejido correspondientes a cuatro tipos distintos de pequeños tumores. Para cada muestra de tejido, están disponibles 2308 mediciones de expresión de genes para 83 pacientes. El conjunto de train tiene 63 pacientes y el de test 20.
+
+```{r}
+library(ISLR2)
+dat <- data.frame(
+x = Khan$xtrain,
+y = as.factor(Khan$ytrain)
+)
+```
+
+Y vamos a definir un grid de hiperparámetros como hicimos anteriormente
+
+```{r}
+mygrid = expand.grid(mtry = 1:5*10,
+                     splitrule=c("gini","extratrees"),
+                     min.node.size	=c(5,10,15))
+print(mygrid)
+```
+
+Y vemos que hay 30 combinaciones distintas de hiperparámetros.
+
+Ahora, entrenamos un modelo de bosques aleatorios usando `train()` de caret. Cuando entrenamos ranger usando caret, debemos añadir el número de árboles que queremos en el bosque mediante el parámetro `num.trees` (por defecto usa 500) y la regla para obtener la importancia de las variables, mediante el parámetro `importance`, al cual se le pueden dar los valores 'none', 'impurity', 'impurity_corrected' y  'permutation'. Nosotros le daremos el valor 'impurity', el cual hace referencia al índice Gini en clasificación y a la varianza de las salidas del modelo para la regresión.
+
+```{r}
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+rangerFit <- train(y ~ ., data = dat, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 tuneGrid=mygrid, 
+                 num.trees=15, 
+                 importance='impurity')
+rangerFit
+```
+
+Podemos pensar que se sobreaprende ya que hay algún modelo con Accuracy y Kappa perfecto. Para ello, vamos a comparar cómo realiza las predicciones nuestro modelo en train y en test.
+
+```{r}
+pred.train <- predict(rangerFit, dat[,-ncol(dat)])
+confusionMatrix(data = pred.train,reference=as.factor(Khan$ytrain))
+```
+
+Y en test:
+
+```{r}
+test = data.frame(x=Khan$xtest, y=Khan$ytest)
+pred.test <- predict(rangerFit, test[,-ncol(test)])
+confusionMatrix(data = pred.test,reference=as.factor(Khan$ytest))
+```
+
+Se siguen realizando predicciones en el conjunto de test con un 85% de precisión, por lo que el modelo funciona correctamente al predecir correctamente 17 de 20 pacientes de test.
+
+De igual forma, podemos obtener la importancia de las variables de los bosques de decisión, que es una media de la importancia de las variables para los distintos árboles que forman el bosque. Como tiene tantas variables este conjunto de datos, sólo se muestran las 20 con más importancia.
+
+```{r}
+varImp(rangerFit)
+```
+
+Podemos ver los valores asociados a la importancia de las 20 variables más importances para nuestro modelo y ver cómo evoluciona el valor de importancia asociado a las mismas.
+
+```{r}
+varImp<-varImp(rangerFit)
+importance <- varImp$importance["Overall"]
+
+#Nos quedamos con las 20 más importantes
+names<-row.names(importance)[order(importance$Overall,decreasing = T)][1:20]
+importance<-importance[order(importance$Overall,decreasing = T),"Overall"][1:20]
+df_importance = data.frame(Importance = importance, Variable = names)
+
+ggplot(df_importance, aes(x=Variable, y=importance,group=1))+ geom_line(linetype="dashed") + geom_point()+ scale_x_discrete(limits = c(names))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
