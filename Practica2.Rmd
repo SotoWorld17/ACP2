@@ -801,27 +801,28 @@ Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de dat
 ```{r}
 set.seed(44)
 spotify$popularity = spotify$popularity / 100 
-porcentaje_datos <- 0.10
-tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
-spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
+porcentaje_datos <- 1
+savePoint=spotify
+tamanio_muestra <- round(nrow(savePoint) * porcentaje_datos)
+savePoint = savePoint[sample(nrow(savePoint), tamanio_muestra), ]
 
 
 set.seed(123)
 
-inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
-training <- spotify[ inTraining,]
-testing  <- spotify[-inTraining,]
+inTraining <- createDataPartition(savePoint$popularity, times=1,p = .80, list = FALSE)
+training <- savePoint[ inTraining,]
+testing  <- savePoint[-inTraining,]
 
 
 
-fitControl <- trainControl(## 100-fold CV
+fitControl <- trainControl(## 10-fold CV
                            method = "cv",
-                           number = 100)
+                           number = 10)
 
 mygrid <- expand.grid(
-  mtry = c(3, 4, 5),
+  mtry = c(4, 5, 6),
   splitrule = c("variance", "extratrees"),
-  min.node.size = c(5, 10, 15))
+  min.node.size = c(50, 100, 150))
 
 mygrid
 
@@ -829,53 +830,24 @@ mygrid
 rpartFit <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
-                 num.trees = 200,
+                 num.trees = 500,
                  tuneGrid=mygrid)
 rpartFit
 ```
 
-
 ```{r}
-finalModel<-rpartFit2$finalModel
-rpart.plot(finalModel)
-round(finalModel$variable.importance/sum(finalModel$variable.importance)*100)
-```
-
-```{r}
-predicciones <- predict(rpartFit2, newdata = testing)
+predicciones <- predict(rpartFit, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
 
 mae
 rmse
 ```
-
-
-```{r}
-predicciones <- predict(spotifyrf, newdata = testing)
-mae <- mae(predicciones, testing$popularity)
-rmse <- rmse(predicciones, testing$popularity)
-
-mae
-rmse
-```
-
-
-
-
-
-
 
 ```{r}
 spotify = spotifyNoMovements
-set.seed(44)
-porcentaje_datos <- 0.10
-tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
-spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
-
 
 set.seed(123)
-
 inTraining <- createDataPartition(spotify$popularity, times=1,p = .75, list = FALSE)
 training <- spotify[ inTraining,]
 testing  <- spotify[-inTraining,]
@@ -883,36 +855,22 @@ testing  <- spotify[-inTraining,]
 
 # Crear modelos utilizando el método train() de Caret
 
-fitControl <- trainControl(## 100-fold CV
+fitControl <- trainControl(## 10-fold CV
                            method = "cv",
-                           number = 100)
-spotifyrf <-train (popularity ~ ., data = training,
-                   method = "rpart",
-                   trControl = fitControl)
-spotifyrf
+                           number = 10)
 
-
-mygrid = expand.grid(cp = c(0.01, 0.05,0.1,0.15,0.2,0.25,0.3))
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(50, 100, 150))
 mygrid
 
-fitControl2 <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 100)
-
-rpartFit2 <- train(popularity ~ ., data = training, 
-                 method = "rpart", 
-                 trControl = fitControl2,
-                 tuneGrid=mygrid)
-rpartFit2
-```
-
-```{r}
-predicciones <- predict(rpartFit2, newdata = testing)
-mae <- mae(predicciones, testing$popularity)
-rmse <- rmse(predicciones, testing$popularity)
-
-mae
-rmse
+spotifyrf <-train (popularity ~ ., data = training,
+                   method = "ranger",
+                   trControl = fitControl,
+                   num.trees = 500,
+                   tuneGrid=mygrid)
+spotifyrf
 ```
 
 
