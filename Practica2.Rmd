@@ -795,27 +795,48 @@ La idea clave es combinar la información de múltiples árboles para reducir so
 
 Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de datos. Sin embargo, cambios que hemos hecho en los datos ayudarán al rendimiento como puede ser la eliminación de datos no relevantes y el manejo de los valores nulos.
 
+Tal y como vimos en clase vamos a utilizar la función ranger, debido a su rapidez en la implementación de bosques aleatorios.
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
+Los hiperparámetros de configuración son los siguientes:
+
 ```{r}
-set.seed(44)
-spotify$popularity = spotify$popularity / 100 
-porcentaje_datos <- 1
-savePoint=spotify
-tamanio_muestra <- round(nrow(savePoint) * porcentaje_datos)
-savePoint = savePoint[sample(nrow(savePoint), tamanio_muestra), ]
+rangerInfo = getModelInfo("ranger")
+rangerInfo = rangerInfo$ranger
+rangerInfo$parameters
+```
+Aqui podemos ver los parametros `mtry`, `splitrule`, `min.node.size`.
 
+Donde `mtry` es el número de variables a considerar en cada división del árbol, hemos leido que se suele probar con la raiz cuadrada del número de variables, por lo que nosotras vamos a probar con valores que van de 4 a 6.
+Por otro lado `splitrule` es la regla que se utiliza para dividir cada nodo. Al tratarse de un problema de regresión, estamos probando con variance y con extratree.
+Y por ultimo `min.node.size` que es el numero de ejemplos que debe haber como minimo en cada nodo.
+ En nuestro caso estaremos probando con 50,100 y 150 
 
+A continuacion se puede ver como hemos generado un grid y ademas hemos probado con distintos numeros de arboles. Para 200,300,400 y 500 y seguidamente veremos si el numero de arboles es significativo.
+
+En este chunk , se puede ver además comentado, que antes de ejecutar el codigo con todos los datos, se hizo tambien para un porcentaje de datos de la muestra. En nuestro caso fue del 30%. Al encontrar resultados significativos con el grid pensado, hemos decidido seguir adelante con él y más abajo se contrastaran los resultados y se probara que al menos una de las configuraciones nos produce unos resultados aceptables. 
+
+```{r}
 set.seed(123)
+inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+training <- spotify[ inTraining,]
+testing  <- spotify[-inTraining,]
+```
 
-inTraining <- createDataPartition(savePoint$popularity, times=1,p = .80, list = FALSE)
-training <- savePoint[ inTraining,]
-testing  <- savePoint[-inTraining,]
 
+```{r rf200trees, eval=FALSE }
+set.seed(44)
+#porcentaje_datos <- 0.30
+#tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
+#spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
 
+#set.seed(126)
+#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+#training <- spotify[ inTraining,]
+#testing  <- spotify[-inTraining,]
 
-fitControl <- trainControl(## 10-fold CV
+fitControl <- trainControl(## 100-fold CV
                            method = "cv",
                            number = 10)
 
@@ -824,19 +845,97 @@ mygrid <- expand.grid(
   splitrule = c("variance", "extratrees"),
   min.node.size = c(50, 100, 150))
 
-mygrid
+rf_200t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 200,
+                 tuneGrid=mygrid)
 
+saveRDS(object= rf_200t, file = "numTrees200.rds")
+```
 
-rpartFit <- train(popularity ~ ., data = training, 
+```{r rf300trees, eval= FALSE}
+#set.seed(126)
+#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+#training <- spotify[ inTraining,]
+#testing  <- spotify[-inTraining,]
+
+fitControl <- trainControl(## 100-fold CV
+                           method = "cv",
+                           number = 10)
+
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(50, 100, 150))
+
+rf_300t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 300,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_300t, file = "numTrees300.rds")
+```
+
+```{r rf400trees, eval = FALSE}
+#set.seed(126)
+#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+#training <- spotify[ inTraining,]
+#testing  <- spotify[-inTraining,]
+
+fitControl <- trainControl(## 100-fold CV
+                           method = "cv",
+                           number = 10)
+
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(50, 100, 150))
+
+rf_400t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 400,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_400t, file = "numTrees400.rds")
+```
+
+```{r rf500trees, eval = FALSE}
+#set.seed(126)
+#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+#training <- spotify[ inTraining,]
+#testing  <- spotify[-inTraining,]
+
+fitControl <- trainControl(## 100-fold CV
+                           method = "cv",
+                           number = 10)
+
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(50, 100, 150))
+
+rf_300t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
                  num.trees = 500,
                  tuneGrid=mygrid)
-rpartFit
+
+saveRDS(object= rf_500t, file = "numTrees500.rds")
 ```
 
 ```{r}
-predicciones <- predict(rpartFit, newdata = testing)
+rf_200t = readRDS("numTrees200.rds")
+rf_300t = readRDS("numTrees300.rds")
+rf_400t = readRDS("numTrees400.rds")
+rf_500t = readRDS("numTrees500.rds")
+```
+
+
+```{r}
+predicciones <- predict(rf_200t, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
 
@@ -844,25 +943,29 @@ mae
 rmse
 ```
 
+
 ```{r}
+predicciones <- predict(rf_300t, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+
+mae
+rmse
+```
+
+
+Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 500 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement` 
+
+```{r, eval =FALSE}
 spotify = spotifyNoMovements
-
-set.seed(123)
-inTraining <- createDataPartition(spotify$popularity, times=1,p = .75, list = FALSE)
-training <- spotify[ inTraining,]
-testing  <- spotify[-inTraining,]
-
-
-# Crear modelos utilizando el método train() de Caret
-
 fitControl <- trainControl(## 10-fold CV
                            method = "cv",
                            number = 10)
 
 mygrid <- expand.grid(
-  mtry = c(4, 5, 6),
-  splitrule = c("variance", "extratrees"),
-  min.node.size = c(50, 100, 150))
+  mtry = 6,
+  splitrule = c("variance"),
+  min.node.size = 50)
 mygrid
 
 spotifyrf <-train (popularity ~ ., data = training,
@@ -870,18 +973,25 @@ spotifyrf <-train (popularity ~ ., data = training,
                    trControl = fitControl,
                    num.trees = 500,
                    tuneGrid=mygrid)
-spotifyrf
+
+saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
+```
+
+```{r}
+rfNoMov = readRDS("spotifyNoMovements.rds")
 ```
 
 
+
 ```{r}
-predicciones <- predict(spotifyrf, newdata = testing)
+predicciones <- predict(rfNoMov, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
 
 mae
 rmse
 ```
+
 
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
@@ -918,7 +1028,7 @@ Los requisitos para el Deep Learning incluyen:
 
 Todos estos requisitos han sido cumplidos gracias al proceso de preparación de datos que hemos llevado a cabo.
 
-```{r}
+```{r, eval=FALSE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -991,7 +1101,7 @@ Los requisitos para el clustering, especialmente para k-means, incluyen:
 
 - Manejo de valores nulos: Los valores nulos pueden afectar la calidad del clustering, por lo que es importante tratarlos antes del entrenamiento, lo cual hemos ya.
 
-```{r}
+```{r, eval=FALSE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
