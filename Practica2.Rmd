@@ -768,7 +768,7 @@ Antes de empezar el apartado C, creemos que saber de antemano la popularidad exa
 ```{r, include= false}
 intervalos <- c(0, 30, 60, 90, 101)
 spotify2 = spotify
-spotify2$popularity <- cut(spotif2y$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+spotify2$popularity <- cut(spotify2$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
 spotify2$popularity = as.factor(spotify2$popularity)
 ```
 
@@ -800,6 +800,7 @@ Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de dat
 
 ```{r}
 set.seed(44)
+spotify$popularity = spotify$popularity / 100 
 porcentaje_datos <- 0.10
 tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
 spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
@@ -807,34 +808,30 @@ spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
 
 set.seed(123)
 
-inTraining <- createDataPartition(spotify$popularity, times=1,p = .75, list = FALSE)
+inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
 training <- spotify[ inTraining,]
 testing  <- spotify[-inTraining,]
 
 
-# Crear modelos utilizando el método train() de Caret
 
 fitControl <- trainControl(## 100-fold CV
                            method = "cv",
                            number = 100)
-spotifyrf <-train (popularity ~ ., data = training,
-                   method = "rpart",
-                   trControl = fitControl)
-spotifyrf
 
+mygrid <- expand.grid(
+  mtry = c(3, 4, 5),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(5, 10, 15))
 
-mygrid = expand.grid(cp = c(0.01, 0.05,0.1,0.15,0.2,0.25,0.3))
 mygrid
 
-fitControl2 <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
 
-rpartFit2 <- train(popularity ~ ., data = training, 
-                 method = "rpart", 
-                 trControl = fitControl2,
+rpartFit <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 200,
                  tuneGrid=mygrid)
-rpartFit2
+rpartFit
 ```
 
 
