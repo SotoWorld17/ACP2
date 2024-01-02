@@ -26,6 +26,8 @@ library(FactoMineR)
 library(factoextra)
 library(plotly)
 library(mlbench)
+library(rpart.plot)
+library(Metrics)
 ```
 
 ```{r setup, include=FALSE}
@@ -665,19 +667,24 @@ Ahora vamos a calcular la **popularidad previa** de canciones en un conjunto de 
 spotify <- spotify %>%
   group_by(spotify_id,country) %>%
   arrange(snapshot_date) %>%
-  mutate(prev_popularity=if_else(as.numeric(difftime(as.Date(snapshot_date), 
-                              lag(as.Date(snapshot_date)), units = "days")) >= 1 & 
-                              as.numeric(difftime(as.Date(snapshot_date), lag(as.Date(snapshot_date)),
-                              units = "days")) <= 7, lag(popularity), 0))
+  mutate(between_week_prev_popularity = if_else(row_number() == 1, popularity, if_else((snapshot_date - lag(snapshot_date)>1 & (snapshot_date - lag(snapshot_date)<=7)) , lag(popularity), 0)))
+
+spotify <- spotify %>%
+  group_by(spotify_id,country) %>%
+  arrange(snapshot_date) %>%
+  mutate(day_prev_popularity = if_else(row_number() == 1, 0, if_else(snapshot_date - lag(snapshot_date) == 1, lag(popularity), 0)))
+
+
+#colSums(is.na(spotify))
 ```
 
-Primero organizamos la información por identificador y país, asegurándose de que los registros estén ordenados; luego, para cada canción se determina la popularidad que tenía en fechas anteriores, considerando únicamente aquellas con una diferencia de 1 a 7 días respecto a la fecha actual. El resultado es una nueva columna llamada `prev_popularity`, que refleja la popularidad previa de cada canción en el tiempo. 
+Primero organizamos la información por identificador y país, asegurándose de que los registros estén ordenados; luego, para cada canción se determina la popularidad que tenía en fechas anteriores, considerando únicamente aquellas con una diferencia de 1 a 7 días respecto a la fecha actual. El resultado es una nueva columna llamada `between_week_prev_popularity`, que refleja la popularidad previa de cada canción en el tiempo. Tambien se hace el mismo proceso para solamente el día anterior. Para la primera aparición por lista de cada canción se asigna su propia popularidad porque de no ser así nos saldria un valor NA.
  
 
 Hasta ahora no hemos hecho nada más que añadir columnas, pero sabemos de antemano que no todas ellas nos van a ser de utilidad para entrenar nuestro modelo. Sin embargo, no las hemos eliminado anteriormente para hacer la limpieza de datos pero ahora procedemos a quitar las columnas `spotify_id`, `name`, `artists`, `album_name`, `album_release_date`   
 
 ```{r}
-spotify = spotify[, -c(1,2,3,12,13)]
+eliminar = c("spotify_id", "name", "artists", "album_name", "album_release_date")
 ```
 
 
@@ -685,14 +692,28 @@ Anteriormente hemos agrupado los argumentos `album_release_date` y `snapshot_dat
 
 
 ```{r}
-spotify = spotify[, -5]
+eliminar = c("spotify_id", "name", "artists", "album_name", "album_release_date","snapshot_date")
 ```
 
 
-Cómo explicábamos antes, hemos considerado crear la variable `continente` para hacer una mayor limpieza de datos, pero debido a que se nos ha ocurrido la otra alternativa para hacer limpieza de duplicados y no cargarnos tantos datos, consideramos que ya no nos va a hacer falta `continent`, al igual que `country`. Como el objetivo es dada una canción saber si esta se va a hacer famosa o no, no vamos a tener en cuenta el país o continente.
+Cómo explicábamos antes, la variable country no nos va a ser de utilidad a determinar si una canción va a ser popular o no. Por otro lado somos conscientes de que el país si que afectaría a que tipo de canciones se vuelven o no populares, pero al igual que otros atributos como el artista (que ya hemos eliminado previamente). Como el objetivo es dada una canción saber si esta se va a hacer famosa o no, no vamos a tener en cuenta el país o continente.
 
 ```{r}
-spotify = spotify[, -c(4,21)]
+eliminar = c("spotify_id", "name", "artists", "album_name", "album_release_date","snapshot_date", "country")
+```
+
+Hasta ahora hemos borrado los parametros que nos parecían más evidentes, pero pensando en la resolución del problema, nosotras tambien llegamos a la conclusión de que los parámetros `daily_movement`, `daily_rank` y `weekly_movement` a pesar de que nos aportarán algo y sabemos que estan relacionados con la popularidad, no nos ayudarán a determinar si una canción cualquiera se va a hacer famosa (al igual que con el parámetro `artists`). Hemos llegado a esta conclusión debido a que el pensamiento que tenemos nosotras al hacer esta practica es que vamos a crear un proyecto para determinar si una cancion será popular o no, y estos tres parametros nos dan informacion sobre canciones en la lista pero nada más. Para confirmar nuestras sospechas trabajaremos con un dataset conjunto que si que tenga estos tres parametros, y despues comprobaremos la precisión. Nuestras conclusiones previas es que sobre estos parametros si que cae cierta importancia y que puestos más altos en el daily rank supondran una mayor popularidad pero creemos que no nos servira de mucho a la hora de determinar la posible popularidad de una canción futura.
+```{r}
+spotify = spotify[, !names(spotify) %in% eliminar]
+spotifyNoMovements = spotify
+eliminar = c("daily_rank", "daily_movement", "weekly_movement")
+spotifyNoMovements = spotifyNoMovements[, !names(spotify) %in% eliminar]
+```
+
+
+```{r}
+#SAVE POINT PARA CUANDO LA CAGO. BORRAR 
+savePoint = spotify
 ```
 
 
@@ -705,25 +726,25 @@ Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo
 - `duration_ms`: pensamos que  una mejor forma de analizar la duración de las canciones es si normalizamos estos valores con segundos en vez de milisegundos pues así no tenemos datos muy específico que, además, no creemos que una diferencia de milisegundos entre las canciones afecte a los resultados y de esta forma es más fácil comparar las duraciones pues en spotify el valor mínimo que se guarda de cara al público es en segundos.
 
 ```{r}
-spotiNormalizado = spotify
-spotiNormalizado$duration_sec <- trunc(spotiNormalizado$duration_ms / 1000)
-spotiNormalizado <- subset(spotiNormalizado, select = -c(duration_ms))
+#spotiNormalizado = spotify
+#spotiNormalizado$duration_sec <- trunc(spotiNormalizado$duration_ms / 1000)
+#spotiNormalizado <- subset(spotiNormalizado, select = -c(duration_ms))
 ```
 
 - `loudness`: vamos a normalizar los decibelios en [0,1] pues los valores van de [-31.042,1.155] y para ello sumaremos a cada dato 31.042 y lo dividiremos entre (1.155+31.042).
 
 ```{r}
-max <- max(spotiNormalizado$loudness)
-min <- min(spotiNormalizado$loudness)
-spotiNormalizado$loudness <- (spotiNormalizado$loudness-min)/(max-min)
+#max <- max(spotiNormalizado$loudness)
+#min <- min(spotiNormalizado$loudness)
+#spotiNormalizado$loudness <- (spotiNormalizado$loudness-min)/(max-min)
 ```
 
 - `tempo`: el tempo lo vamos a normalizar de una forma parecida al anterior pues su rango de valores es [47.914,217.969] y nos interesaría que estuviese en [0,1] por lo que le restaremos 47.914 al valor del dato y lo dividiremo entre (47.914+217.969).
 
 ```{r}
-max <- max(spotiNormalizado$tempo)
-min <- min(spotiNormalizado$tempo)
-spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
+#max <- max(spotiNormalizado$tempo)
+#min <- min(spotiNormalizado$tempo)
+#spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
 ```
 
 \* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
@@ -732,13 +753,25 @@ Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` 
 
 ```{r}
 epsilon <- 1e-10
-# Calcular velocidad_popularidad con epsilon para evitar divisiones entre 0
-spotiNormalizado$velocidad_popularidad <- 1 / (spotiNormalizado$diferencia_dias + epsilon)
+# Calcular velocidad_popularidad con epsilon para evitar divisiones3 entre 0
+spotify$velocidad_popularidad <-  1 / (spotify$diferencia_dias + epsilon)
+#spotiNormalizado$velocidad_popularidad <- 1 / (spotiNormalizado$diferencia_dias + epsilon)
 ```
 
 \* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
 
 El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, un poco más arriba hemos creado una variable `prev_popularity` gracias a que las fechas son secuenciales y podemos acceder a la popularidad a lo largo de los días. De esta forma podemos analizar cómo cambia la popularidad de una canción a lo largo de la semana anterior, proporcionando información valiosa para entender patrones y tendencias en el comportamiento de reproducción de las canciones en la plataforma.
+
+
+Antes de empezar el apartado C, creemos que saber de antemano la popularidad exacta de una canción va a ser muy complicado. Creemos que es mejor idea hacer una factor de la popularidad donde se adivine si esta va a ser muy popular (su valor de popularidad es de entre 90-100), si va a ser popular (su valor de popularidad es de entre 60-90) o si no va a ser muy popular (su valor de popularidad es de entre 30-60) o si apenas lo va a ser (0-30). Porque pensamos que el objetivo, es saber si la canción va a ser buena o no y preferimos abordar un problema de clasificación a un problema de regresión, ya que en caso de llevar a la realidad, creemos que interesaría más darle a conocer este dato a un número de popularidad más exacta, por lo que, si la otra idea no es abordable llevaremos a cabo una que trabaje con la variable `popularity`, factorizada, de la siguiente manera:
+
+```{r, include= false}
+intervalos <- c(0, 30, 60, 90, 101)
+spotify2 = spotify
+spotify2$popularity <- cut(spotif2y$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+spotify2$popularity = as.factor(spotify2$popularity)
+```
+
 
 # Apartado C
 ## Random Forest
@@ -760,35 +793,140 @@ La idea clave es combinar la información de múltiples árboles para reducir so
 ### Requisitos
 **Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
 
-Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de datos. Sin embargo, cambios que hemos hecho en los datos ayudarán al rendimiento como puede ser la normalización de los valores, la eliminación de datos no relevantes y el manejo de los valores nulos.
+Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de datos. Sin embargo, cambios que hemos hecho en los datos ayudarán al rendimiento como puede ser la eliminación de datos no relevantes y el manejo de los valores nulos.
 
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
 ```{r}
+set.seed(44)
+porcentaje_datos <- 0.10
+tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
+spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
+
+
 set.seed(123)
 
-# Definir las variables de entrada y salida
-spotirf.Var.Salida.Usada <- c("popularity")
-spotirf.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotirf.Var.Salida.Usada)
+inTraining <- createDataPartition(spotify$popularity, times=1,p = .75, list = FALSE)
+training <- spotify[ inTraining,]
+testing  <- spotify[-inTraining,]
 
-# Crear una partición del 80% para entrenamiento y 20% para prueba
-spotirf.Particion <- createDataPartition(spotiNormalizado[[spotirf.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE)
-
-# Crear conjuntos de entrenamiento y prueba
-spotirf.Datos.Entrenamiento <- spotiNormalizado[spotirf.Particion, ]
-spotirf.Datos.Prueba <- spotiNormalizado[-spotirf.Particion, ]
 
 # Crear modelos utilizando el método train() de Caret
-system.time(
-  spotirf.modelo.rf <- train(spotiNormalizado[spotirf.Vars.Entrada.Usadas],
-                           spotiNormalizado[[spotirf.Var.Salida.Usada]],
-                           method = 'rf')
-)
+
+fitControl <- trainControl(## 100-fold CV
+                           method = "cv",
+                           number = 100)
+spotifyrf <-train (popularity ~ ., data = training,
+                   method = "rpart",
+                   trControl = fitControl)
+spotifyrf
+
+
+mygrid = expand.grid(cp = c(0.01, 0.05,0.1,0.15,0.2,0.25,0.3))
+mygrid
+
+fitControl2 <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+rpartFit2 <- train(popularity ~ ., data = training, 
+                 method = "rpart", 
+                 trControl = fitControl2,
+                 tuneGrid=mygrid)
+rpartFit2
 ```
 
+
+```{r}
+finalModel<-rpartFit2$finalModel
+rpart.plot(finalModel)
+round(finalModel$variable.importance/sum(finalModel$variable.importance)*100)
+```
+
+```{r}
+predicciones <- predict(rpartFit2, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+
+mae
+rmse
+```
+
+
+```{r}
+predicciones <- predict(spotifyrf, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+
+mae
+rmse
+```
+
+
+
+
+
+
+
+```{r}
+spotify = spotifyNoMovements
+set.seed(44)
+porcentaje_datos <- 0.10
+tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
+spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
+
+
+set.seed(123)
+
+inTraining <- createDataPartition(spotify$popularity, times=1,p = .75, list = FALSE)
+training <- spotify[ inTraining,]
+testing  <- spotify[-inTraining,]
+
+
+# Crear modelos utilizando el método train() de Caret
+
+fitControl <- trainControl(## 100-fold CV
+                           method = "cv",
+                           number = 100)
+spotifyrf <-train (popularity ~ ., data = training,
+                   method = "rpart",
+                   trControl = fitControl)
+spotifyrf
+
+
+mygrid = expand.grid(cp = c(0.01, 0.05,0.1,0.15,0.2,0.25,0.3))
+mygrid
+
+fitControl2 <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 100)
+
+rpartFit2 <- train(popularity ~ ., data = training, 
+                 method = "rpart", 
+                 trControl = fitControl2,
+                 tuneGrid=mygrid)
+rpartFit2
+```
+
+```{r}
+predicciones <- predict(rpartFit2, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+
+mae
+rmse
+```
+
+
+```{r}
+predicciones <- predict(spotifyrf, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+
+mae
+rmse
+```
 
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
