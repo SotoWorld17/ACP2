@@ -721,41 +721,42 @@ savePoint = spotify
 
 \* **¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
 
-Los predictores que habría que normalizar son `duration_ms`, `loudness`, `tempo`, `diferencia_dias`.
-
-- `duration_ms`: pensamos que  una mejor forma de analizar la duración de las canciones es si normalizamos estos valores con segundos en vez de milisegundos pues así no tenemos datos muy específico que, además, no creemos que una diferencia de milisegundos entre las canciones afecte a los resultados y de esta forma es más fácil comparar las duraciones pues en spotify el valor mínimo que se guarda de cara al público es en segundos.
+Los predictores que habría que normalizar son principalmente las características de las canción, para ello se podría utilizar el método min-max o la estandarización, pensando de cara a la próxima parte de la práctica y sabiendo de la existencia de valores negativos, creemos que es mejor hacerlo mediante el z-score para ello vamos a utilizar la función `scale` disponible en R.
 
 ```{r}
-#spotiNormalizado = spotify
-#spotiNormalizado$duration_sec <- trunc(spotiNormalizado$duration_ms / 1000)
-#spotiNormalizado <- subset(spotiNormalizado, select = -c(duration_ms))
+songFeatures <-  c('danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms', 'diferencia_dias')
 ```
 
-- `loudness`: vamos a normalizar los decibelios en [0,1] pues los valores van de [-31.042,1.155] y para ello sumaremos a cada dato 31.042 y lo dividiremos entre (1.155+31.042).
+Normalizar estas características puede ayudar a mejorar convergencia y rendimiento del modelo. Sobretodo si nos encontramos con magnitudes distintas como es por ejemplo duration_ms con respecto a danceability. Así la influencia de estas características en futuros modelos, como el de deep learning será similar y no tendrán tanto peso aquellas con magnitudes tan grandes.
 
 ```{r}
-#max <- max(spotiNormalizado$loudness)
-#min <- min(spotiNormalizado$loudness)
-#spotiNormalizado$loudness <- (spotiNormalizado$loudness-min)/(max-min)
+spotiNormalizado = spotify
+min_max_normalize <- function(x) {
+  (x - min(x)) / (max(x) - min(x)) * 2 - 1
+}
+spotiNormalizado[, songFeatures] <- lapply(spotiNormalizado[, songFeatures], min_max_normalize)
 ```
 
-- `tempo`: el tempo lo vamos a normalizar de una forma parecida al anterior pues su rango de valores es [47.914,217.969] y nos interesaría que estuviese en [0,1] por lo que le restaremos 47.914 al valor del dato y lo dividiremo entre (47.914+217.969).
+Además, creemos que sería interesante escalar `daily_movement`, `weekly_movement`, `between_week_prev_popularity`, `day_prev_popularity` y, como `daily_rank` tiene relación con las otras también la vamos a escalar.
 
 ```{r}
-#max <- max(spotiNormalizado$tempo)
-#min <- min(spotiNormalizado$tempo)
-#spotiNormalizado$tempo <- (spotiNormalizado$tempo-min)/(max-min)
+masDatos <- c('daily_movement', 'weekly_movement', 'daily_rank', 'between_week_prev_popularity', 'day_prev_popularity') 
+
+spotiNormalizado[, masDatos] <- lapply(spotiNormalizado[, masDatos  ], min_max_normalize)
 ```
+
 
 \* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
-Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias`. También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
+Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias` y hemos añadido los atributos `between_week_prev_popularity` y `day_prev_popularity` para tener guardados los datos de la popularidad previa.
+
+También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
 
 ```{r}
 epsilon <- 1e-10
-# Calcular velocidad_popularidad con epsilon para evitar divisiones3 entre 0
+# Calcular velocidad_popularidad con epsilon para evitar divisiones entre 0
 spotify$velocidad_popularidad <-  1 / (spotify$diferencia_dias + epsilon)
-#spotiNormalizado$velocidad_popularidad <- 1 / (spotiNormalizado$diferencia_dias + epsilon)
+spotiNormalizado$velocidad_popularidad <- 1 / (spotify$diferencia_dias + epsilon)
 ```
 
 \* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
@@ -1050,7 +1051,11 @@ Los requisitos para el Deep Learning incluyen:
 
 - Codificación de variables categóricas: las variables categóricas deben codificarse adecuadamente para ser utilizadas en la red neuronal.
 
-Todos estos requisitos han sido cumplidos gracias al proceso de preparación de datos que hemos llevado a cabo.
+Aunque hemos tenido en cuenta estos requisitios en la preparación de datos, hemos modificado un podo el conjunto de datos por lo que vamos a terminar de arreglarlo para poder utilizarlo.
+
+```{r}
+spotiNormalizado[, 'velocidad_popularidad'] <- lapply(spotiNormalizado[, 'velocidad_popularidad'], min_max_normalize)
+```
 
 ```{r, eval=FALSE}
 set.seed(123)
@@ -1069,9 +1074,12 @@ spotiRNN.Datos.Entrenamiento <- spotiNormalizado[spotiRNN.Particion, ]
 spotiRNN.Datos.Prueba <- spotiNormalizado[-spotiRNN.Particion, ]
 
 # Configurar la red neuronal
-modelo <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = "relu", input_shape = length(spotiRNN.Vars.Entrada.Usadas)) %>%
-  layer_dense(units = 1)
+modelo <- keras_model_sequential() 
+modelo %>%
+  layer_dense(units = 64, input_shape = length(spotiRNN.Vars.Entrada.Usadas)) %>%
+  layer_activation('relu') %>% 
+  layer_dense(units = 10) %>% 
+  layer_activation('softmax')
 
 # Compilar el modelo
 modelo %>% compile(

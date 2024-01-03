@@ -1,0 +1,811 @@
+---
+title: "Una introducción a KERAS con R"
+subtitle: Aprendizaje Computacional, Grado en Informática (UMU)
+author: "Juan A. Botía, `@juanBotiaBlaya, juanbot@um.es`"
+date: "30/11/2022"
+output: 
+  html_document:
+    theme: spacelab
+    highlight: kate
+    df_print: paged
+    toc: true
+    toc_float: true
+    number_sections: true
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Keras básico
+
+## Introducción a Keras
+
+Existen multitud de paquetes software para trabajar en redes neuronales desde R (ver la sección correspondiente en los apéndices de este mismo documento). E incluso dentro de Caret. Sin embargo, una vez que hemos aprendido como funciona Caret, vamos a ver un enfoque diferente, el framework Keras. Las siguientes son las diferencias más relevantes entre ambos
+
+* Aplicabilidad
+    + Caret es multi-técnica, 
+    + Keras es un marco de trabajo exclusivamente para deep learning.
+
+* Generalidad
+    + Caret está orientado a automatizar todos los procesos del machine learning, incluyendo preproceso de datos, entrenamiento de modelos, selección de modelos y evaluación final. 
+    + Keras no incluye nada de eso, es una API para trabajar con deep learning tan a bajo nivel como se quiera (i.e. tensores).
+
+* ¿quién está detrás?
+    + Caret está desarrollado en R, por uno de los ingenieros de RStudio. 
+    
+    + Keras está desarrollado en Python por Francois Chollet, desde 2015, y pretende ser una API genérica para deep learning independientemente de la implementación concreta para trabajar con tensores que tengamos por debajo. Pero la buena noticia es que existe un paquete R, Keras, que permite trabajar con la API de Keras desde R y esto es precisamente lo que vamos a hacer.
+
+* Nivel de abstracción
+    + Caret aisla de las técnicas al programador y lo enfoca en obtener el mejor modelo posible dado un conjunto de aprendizaje relativamente poco costoso de trabajar, computacionalmente. 
+    
+    + Keras da facilidades para trabajar de manera sencilla con el deep learning. Pero no es aconsejable abstraerse de la técnica en deep learning. Su manejo no es trivial, y el consumo que necesitan tanto de memoria como de CPU/GPU no permite excesivos alardes como ejecutar cientos o miles de experimentos.
+
+
+### Los procesos de deep learning pueden modelarse con grafos
+
+Las dos arquitecturas de red neuronal que actualmente se asocian al deep learning [@lecun_deep_2015] son las de convolución y las recurrentes. 
+
+* __Las CNNs (Convolutional Neural Networks)__ tienen aplicación directa en el dominio del reconocimiento de imágenes, entre otros. 
+
+* __Las RNNs (Recurrent Neural Networks)__ se aplican en dominios en los que la naturaleza de los datos es secuencial como, por ejemplo, procesamiento del habla y lenguaje escrito. 
+
+Keras está basado en la idea de grafo (al igual que otros frameworks como, por ejemplo Tensorflow) en el que la estructura general de computación de los datos, desde que se introducen a la entrada, hasta que se genera una salida, van sufriendo transformaciones a partir de operaciones cuyo orden de ejecución viene determinado por dicho grafo en el que los nodos son operaciones y los arcos son caminos por los que pueden fluir los datos. 
+
+En contraposición a los modelos imperativos, por ejemplo, en este caso no hay un único flujo de control de programa (modelo von Neumann) sino que en cada nodo, una operación se ejecuta tan pronto como puede hacerse (i.e. se dispone de los datos necesarios para hacerlo) con lo que se consigue el diseño de lenguajes paralelos de manera natural. Precisamente, este tipo de lenguajes son los que vienen especialmente bien en el contexto del deep learning en el que la computación es altamente concurrente.
+
+### Keras es una API genérica para deep learning
+
+Keras es un wrapper, desarrollado en Python, a varios frameworks de deep learning de bajo nivel, incluyendo TensorFlow (al que está instanciado por defecto), la variante que vamos a trabajar en la asignatura. Pero también puede usarse con Theano (MILA, Univ. Montreal) y CNTK (Microsoft)
+
+El concepto principal en Keras es el de modelo (i.e. nuestra red neuronal). El principal tipo de modelo, y en el que nos vamos a centrar, es el [secuencial](http://keras.io/getting-started/sequential-model-guide/) que se define como una disposición lineal de capas. Para crear un modelo se necesita especificar las capas que va a tener y el orden en el que se disponen.
+
+Procesar por completo un modelo Keras implica:
+
+* Especificar la forma de la entrada al modelo: básicamente cuántos atributos de entrada y el tamaño de los batches que vamos a usar en el entrenamiento.
+
+* Compilar el modelo: se refiere a, primeramente, crear nuestro modelo para dejarlo listo para el entrenamiento. Seguidamente, hay que configurar el proceso de aprendizaje que se va a ejecutar sobre el mismo. Ahí han de especificarse, normalmente, tres elementos: el algoritmo de optimización de los parámetros del modelo, la función de error de la que va a hacer uso el algoritmo de optimización y las métricas a usar para medir el progreso del entrenamiento.
+
+* Entrenar el modelo: mediante la función `fit` invocamos el entrenamiento.
+
+Lo que sigue es un ejemplo de código en Python 2.7 obtenido aquí <https://keras.io/getting-started/sequential-model-guide/> en el que se construye una red, con Keras, de 100 entradas (`input_dim`), con batches de 32 samples y activación ReLU (Rectified Linear Unit) <https://en.wikipedia.org/wiki/Rectifier_(neural_networks)>. La segunda capa aplica una sigmoide a la salida, el algoritmo backpropagation con una variante que modifica el learning rate conforme se avanza en el aprendizaje.
+
+```{python, eval=FALSE}
+model = Sequential()
+model.add(Dense(32, activation='relu', input_dim=100))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(optimizer='rmsprop',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+```
+      
+ La función de error, para el caso de dos nodos de salida,  es la de entropía cruzada, tal que $$V(f(x),t) = -t  ln(f(x)) - (1-t) ln(1 - f(x)),$$ siendo $t=(1+y)/2$ para que el valor de t esté en $[0,1]$. La forma general de dicha función es $$H(y) = - \sum_{i} y'_{i} log(y_i),$$
+ en donde $y$ es la distribución de probabilidad predicha por la red (ver abajo) e $y'$ la distribución correcta (i.e. la correspondiente a la etiqueta de clase del ejemplar correspondiente).
+
+ 
+        
+Una vez que nuestro modelo está configurado, generamos un conjunto de datos aleatorio, de 1000 ejemplares y 100 predictores. Para las etiquetas generamos las correspondientes a un problema binaro. Posteriormente, invocamos a `model.fit` con 10 epochs y un tamaño de batch de 32 ejemplares cada vez.
+
+
+```{python, eval=FALSE}
+# Generate dummy data
+import numpy as np
+data = np.random.random((1000, 100))
+labels = np.random.randint(2, size=(1000, 1))
+
+# Train the model, iterating on the data in batches of 32 samples
+model.fit(data, labels, epochs=10, batch_size=32)
+```
+
+Este ejemplo tiene el objetivo simple de mostrar que Python es el lenguaje nativo para Keras, nada más. El resto de material se basa en acceso a Keras mediante R.
+
+## KERAS puede usarse desde R de manera sencilla
+
+Keras es una API que puede integrar diferentes motores de deep learning, entre ellos TensorFlow (TF). TF está programado en C++ y Python; Keras es 100% Python pero incorpora Wrappers que lo hacen accesible a otros lenguajes, por ejemplo R. Como nuestro objetivo no es aprender otro lenguaje, que posiblemente ya conoces, vamos a usar Keras desde R; aunque para nosotros todo esto, como usuarios, es transparente.
+
+### La instalación incluye Python y tensorflow
+
+En pocos pasos vamos a explicar cómo instalar (1) lo necesario para cálculo científico con Python, (2) el framework de TensorFlow para deep learning y (3) Keras para uso de TensorFlow, en base a `pip` y (4) la instalación de R Keras desde RStudio.
+
+Se aconseja usar Linux o Mac aunque también sería posible hacerlo funcionar en Windows, pero esa parte no la documentamos. 
+
+#### Instalación fácil
+
+En principio, la instalación más sencilla de todo lo que necesitamos se reduce  tres comandos, que podemos consultar en <https://keras.rstudio.com/>
+
+```{r, eval=FALSE}
+devtools::install_github("rstudio/keras") 
+reticulate:: install_python(version="3.10")	
+tensorflow::install_tensorflow()
+```
+
+
+
+## Keras para uso de perceptrones multi-capa
+
+Vamos a trabajar con un ejemplo concreto para ilustrar como se usa Keras con un modelo de red neuronal sencillo, un MLP (Multi-Layer Perceptron) para un problema de clasificación multiclase. Podemos definir un MLP como una arquitectura de red neuronal en la que hay una capa de nodos de entrada, totalmente conectados a una segunda capa, la que se denomina capa oculta, que a su vez puede estar totalmente conectada o bien a otra capa oculta (y así tantas como se crea conveniente aunque el MLP convencional usa solamente una) y finalmente a los nodos de salida.
+
+
+### El problema NNIST
+
+Lo primero es introducir el problema  con el que vamos a trabajar. Es el más representativo en redes de convolución: MNIST. En este problema tenemos imágenes de dígitos escritos a mano alzada. Cadas imagen tiene unas dimensiones de $28 x 28$ pixels y un solo canal de color con 256 valores en escala de grises.
+
+La página original del conjunto de datos es esta, [MNIST](http://yann.lecun.com/exdb/mnist/) pero se pueden descargar en un formato mucho más sencillo en esta otra [MNIST-simple](https://pjreddie.com/projects/mnist-in-csv/). Afortunadamente, Keras los incorpora ya.
+
+Cargamos la librería y obtenemos el conjunto de datos MNIST con una simple llamada. Y con `str()` vemos qué tenemos ahí: 
+
+```{r, cache=TRUE}
+library(keras)
+mnist <- dataset_mnist()
+str(mnist)
+```
+
+Como vemos, hay dos listas, que se corresponden con los objetos `train` y `test`, correspondientes a los datos divividos entre entrenamiento y evaluación, con 60000 y 10000 ejemplos respectivamente. Como vemos, cada ejemplar viene dado por una imagen de 28x28 pixels, en valores de escala de grises (8 bits). 
+
+### Los datos de train y test están balanceados
+
+Lo primero que deberíamos comprobar en nuestro problema de clasificación es si nuestro conjunto de ejemplos, tanto en train como en test, está balanceado (i.e. proporción aproximadamente igual de dígitos del 0 al 9). Es importante, para nuestra tranquilidad, comprobar que exista proporcionalidad entre las mismas.
+
+```{r, cache=TRUE}
+bp = barplot(rbind(table(mnist$train$y),table(mnist$test$y)),beside = T,
+        main="Proportion of image types at MNIST (training/test data)",
+			xlab="Digits",col=c("orange","purple"))
+legend("topright",fill=c("orange","purple"),legend=c("train","test"))
+```
+
+Y vemos que así es. 
+
+### Necesitamos reformar los datos de entrada antes de introducirlos al MLP
+
+Ahora transformamos los datos que nos vienen de MNIST de la representación basada en (muestra, fila_pixel, columna_pixel) a (muestra, indice_pixel) como puede verse abajo, con `array_reshape`.
+
+```{r, cache=TRUE}
+x_train <- mnist$train$x
+dim(x_train)
+y_train <- mnist$train$y
+x_test <- mnist$test$x
+dim(x_test)
+y_test <- mnist$test$y
+x_train <- array_reshape(x_train, c(nrow(x_train), 784))
+dim(x_train)
+x_test <- array_reshape(x_test, c(nrow(x_test), 784))
+dim(x_test)
+```
+
+Lo primero que hemos hecho es una operación muy habitual, la de reshape que genera los arrays de la manera que R espera. 
+
+#### Una primera aproximación al reformado de tensores, R y Python
+
+El deep learning puede verse como un flujo de procesamiento de tensores. Un tensor es una matriz de datos (ya sea de 1, 2, 3 o hasta 5 dimensiones). Ejemplos según las dimensiones
+
+* 1 dimensión: nos estamos refiriendo naturalmente a escalares o vectores lineales de escalares, ya sean enteros, flotantes de 32, 64, etc.
+
+* 2 dimensiones: por ejemplo, el conjunto de datos iris puede representarse con un tensor de dos dimensiones, cuatro predictores y 150 ejemplares. También uno de los ejemplares del conjunto MNIST es un ejemplo de tensor 2D.
+
+* 3 dimensiones: el conjunto MNIST es un ejemplo ya que cada ejemplar (primera dimensión), es una figura bidimensional de $n\times m$ pixels, en donde $n$ y $m$ son la seguda y tercera dimensión. Un video es también un ejemplo de tensor 3D.
+
+* 4 dimensiones: un dataset de videos puede ser un ejemplo de tensor de cuatro dimensiones. 
+
+Si nos llevamos esto al terreno de los MLP, supongamos un MLP para aprender a clasificar tipos de lirios en el conjunto Iris, y lo definimos con una capa de entrada de cuatro nodos más el sesgo, 1 capa oculta de 10 nodos, y una capa de salida de tres nodos (3 clases a la salida, un nodo por clase). 
+
+* A la entrada, el MLP procesará, cada vez, tensores de 1 dimensión pero de tamaño 5 (4 más el sesgo). 
+
+* En la capa oculta se procesarán, por cada tensor de entrada, un tensor 2D en el que la primera dimensión indexa los nodos de entrada y la segunda los nodos ocultos. El tamaño será de $5\times 10.
+
+* Finalmente, cada uno de esos tensores genera, a su vez, un tensor 2D en el que la primera dimensión indexa nodos ocultos y la segunda nodos de salida. Su tamaño es de $10\times 3$.
+
+*El tensor de salida de la red es un tensor 1D, con un tamaño de tres valores.
+
+Cada tensor se almacena en memoria reservando el total de la memoria para todo el tensor y los valores se disponen de manera lineal, de tal forma que un elemento de un tensor (ya sea de 2, 3 o n dimensiones) se indexa con un índice de un valor escalar, i.e. $1, 2, 3,\ldots$.
+
+
+#### Los ejemplares de muchas de las 10 clases parecen claramente separables
+
+También es interesante tener una idea de si, gracias a la representación de caracteres escritos a mano alzada, en base a pixels expresados en escala de grises, existe alguna separabilidad entre los ejemplos. 
+
+Ya sabemos cómo hacer esto. Utilizamos un plot PCA sobre 5000 de los ejemplos de entrenamiento y coloreamos cada punto según el dígito al que representa. Como todos los predictores son números del 0 al 255, no es necesario escalar los datos esta vez
+
+```{r, cache=TRUE}
+n = 5000
+mask = sample(1:nrow(x_train),n)
+pca = prcomp(x_train[mask,])
+cols = rainbow(10)
+colors = cols[1 + y_train[mask]]
+plot(pca$x[,1],pca$x[,2],col=colors,pch=19,cex=0.3,
+     xlab="1st PCA",ylab="2nd PCA",main=paste0("PCA plot, ",n," images MNIST"))
+legend("topright",fill=cols,
+       title="Digits",
+       col=cols,
+       legend=0:9,cex=0.6)
+```
+
+Como vemos, este problema puede ser, a priori, no excesivamente complicado en términos de separabilidad entre las clases. Y algunos dígitos nos van a dar más problemas que otros. Por ejemplo, parece que tanto los 1's como los 0's van a ser fácilmente distinguibles del resto, no ocurre lo mismo con los 6's y 7's...
+
+
+En todo caso, si queréis probar diferentes formas de ver MNIST y la separación que puede haber entre clases, esta entrada es muy interesante <https://colah.github.io/posts/2014-10-Visualizing-MNIST/>.
+
+
+Ahora normalizamos los colores en $[0,1]$ al dividir por el máximo valor, 255.
+
+```{r, cache=TRUE}
+max(x_train)
+max(x_test)
+# rescale
+x_train <- x_train / 255
+x_test <- x_test / 255
+```
+
+Ahora convertimos en categóricos tanto `y_train` como `y_test`. Como podemos ver abajo, inicialmente la salida está indicada mediante un entero que indica el dígito que aparece en la imagen correspondiente. Al convertirlo en categórico, generamos una codificación 1-de-c (i.e. tantos bits como clases diferentes, solo un bit activo en cada ejemplar). 
+
+```{r, cache=TRUE}
+str(y_train)
+y_train[1]
+y_train <- to_categorical(y_train, 10)
+y_test <- to_categorical(y_test, 10)
+str(y_train)
+y_train[1,]
+y_train[2,]
+```
+
+Como podemos ver, un dígito 5 se codifica como `0 0 0 0 0 1 0 0 0 0` y un 0 como `1 0 0 0 0 0 0 0 0 0`.
+
+#### Recapitulamos los pasos seguidos
+
+Antes de pasar a definir la red, recapitulamos los pasos que hemos aplicado a los datos y que, en la mayoría de los casos, hay que llevar a cabo:
+
+* Obtenemos ejemplares para el entrenamiento (60000) y la validación (10000)
+
+* Hacemos una adaptación (`reshape`) del array en el que vienen los datos si es necesario (en este caso un array bidimensional lo convertimos en un array lineal ya que así se han de presentar los ejemplares de entrada a la red)
+
+* Comprobamos la proporción entre ejemplares de cada clase
+
+* Escalamos los valores de entrada en $[0,1]$
+
+* Codificamos los valores a la salida de la forma adecuada, uno-de-c, o `one hot`
+
+## MLPs en Keras
+
+Vamos a centrarnos ahora en el uso de un feed-forward perceptrón multi-capa (MLP), que ya hemos definido.
+
+
+Si atacamos este problema desde Caret, es decir, si usamos el modelo `mlp` mediante el interface de Caret, esto nos va a llevar a un estudio superficial de la red neuronal. El usar directamente el software que hace de wrapper del software que realmente implementa la red neuronal, suele impedir usarlo en todo su potencia. Y esto es claramente un error. Caret es aconsejable y conveniente, pero solo si de antemano conocemos perfectamente el modelo con el que estamos trabajando. 
+
+¿Es realmente necesario conocer las técnicas de machine learning a fondo cuando las trabajamos desde Caret? Es cierto que en determinados problemas, existen técnicas que claramente proporcionan mejor rendimiento que otras. Pero si entendemos bien el funcionamiento de una técnica en particular y sabemos dimensionar correctamente sus parámetros, podemos obtener un rendimiento que normalmente suele ser bastante aceptable para una gama muy amplia de problemas. Esto ocurre así con este tipo de modelo de ML, el multi-layer perceptron. Esta discusión asume que lo que menos nos importa es entender el proceso de decisión que lleva a un modelo de ML a tomar decisiones. Las redes neuronales en general y los modelos MLP en particular son difíciles de interpretar. 
+
+
+
+#### Definición y tuning del modelo de red en Keras
+
+Y ahora vamos a definir nuestro modelo de red neuronal en Keras. La forma de definir nuestro modelo es, casi siempre, de la misma forma. 
+
+Primero creamos nuestro modelo secuencial, que básicamente significa que las capas de la red se van definiendo desde la entrada hacia la salida, lo cual marca también la dirección del flujo de datos. El modelo está formado, y se define, por capas, usando una familia de funciones que comienzan con `layer_` y se apilan una tras otra mediante el operador de tubería, como en el siguiente ejemplo accesible desde <https://keras.rstudio.com/articles/about_keras_layers.html> y que reproducimos aquí
+
+```{r, eval=FALSE}
+model = keras_model_sequential() 
+model %>% 
+  layer_dense(units = 32, input_shape = c(784)) %>% 
+  layer_activation('relu') %>% 
+  layer_dense(units = 10) %>% 
+  layer_activation('softmax')
+```
+
+Volveremos a esto más adelante. En todo caso, en el proceso de creación de nuestro modelo secuencial por capas vamos a tener siempre tres partes:
+
+* Definición de la entrada y el resto de capas. 
+
+* Compilación del modelo, en el que se añaden los detalles relativos al algoritmo que ajusta los parámetros del modelo.
+
+* Training: la parte en donde se definen los hiperparámetros del aprendizaje en sí.
+
+La primera capa debe ser siempre la que indica la forma en la que la red tomará las entradas. Hemos visto que en los datos de aprendizaje y test, generamos vectores de 784 componentes para cada ejemplar. 
+
+Y ahora definimos un MLP, con 80 nodos ocultos, salida de esos 80 nodos según una sigmoide y softmax para los 10 nodos de salida, tantos como se corresponden con la codificación uno-de-c (one hot). Vamos a ver que, al usar el tipo de modelo `sequential`, añadimos las capas del modelo en orden, haciendo uso del operador de tubería `%>%`. Como utilizamos `layer_dense` estamos conectando todos los nodos de la capa anterior con todos los de la siguiente.
+
+```{r, cache=TRUE}
+model = keras_model_sequential() 
+model %>% 
+  layer_dense(units = 80, activation = 'sigmoid', input_shape = c(784)) %>% 
+  layer_dense(units = 10, activation = 'softmax')
+summary(model)
+```
+
+Esta operación de arriba arriba genera, como vemos, 63610 parámetros (i.e. variables a entrenar). ¿De dónde salen? 
+Piénsese que tenemos 784 nodos de entrada, y denotamos a cada entrada con con $x_{input,i}$, $1\leq i\leq 784$. También tenemos 80 nodos en la capa oculta y 10 a la salida. 
+Entre la capa de nodos de entrada y la oculta vamos a generar $784 \times 80$ pesos (uno para cada conexión).
+Además cada nodo en la capa oculta va a introducir un sesgo, que irá también acompañado de su correspondiente peso, en total 80 pesos más. Esto es así porque cada nodo $j$ de la capa oculta (hidden) necesita hacer el siguiente cálculo : $$h_j = \sum_i W_{j,i} x_{input,i} + b_j,$$ tal que $W_{j,i}$ hace referencia al conjunto de pesos de los arcos que van de los pixels de la entrada, al nodo $j$ de la capa oculta, con $1\leq j\leq 80$ y $b_j$ es el término independiente (bias). Una vez hecho ese cálculo, se tiene que aplicar la correspondiente función de activación, que denotamos con $f_{acth}$ para referirnos a la función de activación de la capa oculta. La salida final de un nodo oculto $j$ será $f_{acth}(h_j)$, 
+
+Por otro lado, entre la capa oculta y la de salida vamos a tener $80 \times 10$ pesos más, con sus correspondientes sesgos, 10. Con lo que cada nodo de la capa de salida tiene que hacer un cálculo análogo, para el nodo $k$, tenemos $$o_k = \sum_j W_{k,j} f_{acth}(h_j) + b_k,$$ tal que $W_{k,j}$ hace referencia al conjunto de pesos de los arcos que van de los nodos ocultos $j$ al nodo $k$ de la capa de salida, con $1\leq k\leq 10$ y $b_k$ es el término independiente (bias). A su vez, se aplicará una función de activación a $o_k$, que denotamos con $f_{acto}(o_k)$.
+
+
+En total $$784 \times 80 + 80 \times 10 + 80 + 10=63610.$$ Con esto nos podemos hacer una idea de cómo de fácil es hacer uso de una red que consuma todos los recursos de nuestra máquina, si no tenemos cuidado.
+
+#### Nuestras funciones de activación
+
+Como vemos arriba, para $f_{acth}(h_j)$ usamos una sigmoide. La función sigmoide en la capa oculta es conveniente en el sentido en que la j-ésima función (o nodo) recoge información de todos los $i$ pixels de la figura, $1\leq i\leq 784$ y los procesa de determinada forma. 
+
+Pero las funciones de activación de la capa de salida, $f_{act}(o_k)$ para la capa de salida,  son distintas, i.e. de tipo `softmax`. Las funciones de tipo softmax son muy convenientes en este caso. Lo que hacen es convertir toda la información entre la capa oculta de nuestra red y la capa de salida en una distribución de probabilidad para los diez posibles dígitos. 
+
+Como hemos visto arriba para los ejemplos del 5 y del 0, que se codificaban como `0 0 0 0 0 1 0 0 0 0` y `1 0 0 0 0 0 0 0 0 0` respectivamente, deberían ser, idealmente, las salidas de nuestra red. Para que las salidas finales se parezcan a esto, cada nodo de salida, el valor $o_k$,  debe recoger la información de la capa oculta de tal forma que indique cómo de probable es el dígito que ese nodo codifica. 
+
+Ahora bien, la salida última de un nodo de la capa de salida debería estar definida en $[0,1]$, y además queremos que dichas salidas sumen 1 en total, como cualquier otra distribución de probabilidad. Por tanto, para el nodo $k$ hacemos $$softmax(o_k)=\frac{e^{o_k}}{\sum_j e^{o_j}}.$$ 
+
+Ya hemos visto cómo va a ser la arquitectura de nuestro modelo: un MLP con 80 nodos ocultos, activación sigmoidal en la capa oculta, softmax a la salida con codificación 1 de 10, y una entrada a la red por píxel. 
+
+Para ver qué funciones de activación tenemos disponibles, nos vamos a la API de TF, <https://www.tensorflow.org/api_docs/>, de allí a la API de Python (veremos que la hay además para Java y C++), y de ahí al paquete `tf.keras.activations`, y de allí a en link que aparece como `Defined in` para ver el código fuente en Python de las funciones. En todo caso, la documentación de referencia de Keras es <https://keras.rstudio.com/reference/index.html>.
+
+#### Compilación del modelo
+
+Ahora definimos la compilación del modelo como sigue:
+
+```{r, cache=TRUE}
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+```
+
+Una vez más hemos usado el operador de tubería, para indicar que `model` es un argumento para la función `compile()`. Podemos ver cómo está definida haciendo `help(compile)`. El resto de argumentos los introducimos como sigue. El parámetro `loss` es la función de error a la salida: además de ser la que se reporta a la salida, es también la que minimiza  el algoritmo de entrenamiento. Como valores para `loss` podemos indicar un string como el que aparece en el código y  que hace referencia a la función que queremos utilizar, o la función misma, e.g. `loss_categorical_crossentropy()`. Nótese que para saber los posibles valores que podemos usar aquí, tenemos que ir al engine de deep learning que tenemos bajo Keras. Dado que en este caso estamos haciendo uso de tensor flow, es esa documentación la que deberíamos mirar. Por ejemplo, una forma sencilla de atacar el dataset MNIST con TF se puede encontrar aquí <https://www.tensorflow.org/get_started/mnist/beginners>.
+
+El segundo argumento, `optimizer` se refiere al algoritmo de optimización. Si queremos saber qué algoritmos tenemos a nuestra disposición para usar, nos vamos a la API de TF, <https://www.tensorflow.org/api_docs/>, de allí a la API de Python (veremos que la hay además para Java y C++), y de ahí al paquete `tf.keras.optimizers`, que despliega 8 algoritmos entre los que encontramos el más conocido, SGD (Stochastic Gradient Descent), visto en clase y el que estamos usando aquí, RMSProp. La diferencia principal entre todos ellos es la manera en la que gestionan, a lo largo de las épocas de entrenamiento, la actualización de los pesos para, sobre todo, controlar el overfitting mientras que se minimiza el error de training. Y esto lo hacen a través de diferentes formas de actualizar tanto el learning rate como el momentum. En este blog hay una estupenda revisión de los diferentes algoritmos <http://ruder.io/optimizing-gradient-descent/index.html#rmsprop>.
+
+El tercer argumento, `metrics` nos dice cómo medir el éxito del algoritmo tanto en el entrenamiento como en el test. La documentación está accesible a través de la API Python de TF, en el paquete `tf.metrics`. Con el valor `accuracy` se reporta la fracción de las observaciones a clasificar en las que se ha clasificado correctamente. 
+
+Lo que sigue ahora es, por fin, invocar el proceso de training.
+
+```{r, cache=TRUE}
+history = model %>% fit(
+  x_train, y_train, 
+  epochs = 20, 
+  batch_size = 128, 
+  validation_split = 0.2,
+  verbose = 2
+)
+```
+
+Vamos a realizar 20 épocas de entrenamiento, con un tamaño de batch de 128 y un 20% de los ejemplos se van a apartar para test. Los resultados los vamos a almacenar en `history`. Como vemos, su estructura es 
+
+```{r}
+str(history)
+```
+
+Con lo que los resultados finales son los siguientes
+
+```{r}
+cat("Los errores de entrenamiento y evaluación finales son", history$metrics$loss[20],"y",
+    history$metrics$val_loss[20],"\n")
+cat("Los valores de accuracy de entrenamiento y evaluación finales son", history$metrics$acc[20],"y",
+    history$metrics$val_acc[20],"\n")
+```
+
+
+Con `plot` podemos visualizar los resultados, como abajo.
+
+```{r, cache=TRUE}
+plot(history)
+```
+
+
+##Ejercicio
+
+Modificar los parámetros del entrenamiento para obtener una red con mejor accuracy de validación que la que obtenemos en el ejemplo.
+
+## Apéndices
+
+### El operador de tubería en R
+
+Este operador fue introducido en 2014, en el paquete magrittr, y se puede consultar su introducción aquí <https://cran.r-project.org/web/packages/magrittr/vignettes/magrittr.html> aunque también podemos hacer `? '%>%'` y ver posibles usos del mismo. La idea de este operador, al usarse como las tuberías típicas de Unix (linux), y dado que muchos scripts de R siguen la estructura secuencial de una pipeline, es la de mejorar la productividad disminuyendo el tiempo de desarrollo de nuestro código en R al mejorarse la facilidad de lectura del mismo. 
+
+### Recursos disponibles en Caret para el trabajo con redes neuronales
+
+En esta sección se apuntan algunas posibilidades para trabajar con redes neuronales en Caret. Existen muchos otros paquetes fuera de Caret y, como no, otros softwares basados principalmente en Python o Java. Normalmente Caret nos va a servir para un prototipado rápido de nuestra red, al brindarnos la posibilidad de probar fácilmente distintas arquitecturas y la mejora sencilla mediante búsqueda simple de combinaciones de hyperparámetros adecuados. Pero en modo producción, es decir, cuando nuestro modelo esté integrado en un producto final, con toda probabilidad acabaremos prescindiendo de Caret para realizar optimizaciones más en detalle o a bajo nivel. 
+
+Si vamos a la página de modelos disponibles en Caret <http://topepo.github.io/caret/available-models.html> vamos a ver que podemos usar, entre otros, los siguientes paquetes que implementan distintas variaciones de redes neuronales.
+
+* Variaciones del perceptrón multi-capa implementadas en el RSNNS (Stuttgart Neural Network Simulator), cuya documentación puede accederse aquí <https://cran.r-project.org/web/packages/RSNNS/RSNNS.pdf>. Incluye muchas de las variaciones típicas, además de varias capas. Lo vamos a utilizar en el resto de esta primera sesión (última versión de la documentación es de agosto de 2018).
+
+* Redes neuronales con regularización bayesiana accesibles desde <https://cran.r-project.org/web/packages/brnn/brnn.pdf>, implementan una red de una capa oculta con control de overfitting mediante regularización. Puede paralelizarse en arquitecturas multi-core (también muy activo, última actualización de la misma fecha que el anterior).
+
+* Red neuronal multi-capa con optimización log-lineal accesible en <https://cran.r-project.org/web/packages/nnet/nnet.pdf>. 
+
+* Perceptrón multi-capa para regresión monótona, con restricciones monótonas útiles para introducir apriorismos en la relación entre el predictor y la variable dependiente en <https://cran.r-project.org/web/packages/monmlp/monmlp.pdf>.
+
+* Un paquete para deep learning, que es un interface a Keras que incluye redes de convolución y recurrentes a través del conocido TensorFlow, cuya documentación está en <https://cran.r-project.org/web/packages/keras/index.html>. Se necesita un wrapper de Python, el código en el que está desarrollado el motor de redes neuronales basado en TF.
+
+* El software MXNet para deep learning, también accesible desde R, cuya documentación puede encontrarse aquí <https://mxnet.incubator.apache.org/api/r/index.html>
+
+Y muchos más.
+
+
+# Técnicas de regularización
+
+## Introducción al sobreajuste
+
+Recordemos la definición de overfitting, para un modelo $h$, que dábamos cuando introducíamos Caret. 
+
+> dado un conjunto de datos $D$, con sus correspondientes predictores y variable de respuesta, al que dividimos en training y test $D_{tr}$ y $D_{te}$, se dice que una hipótesis/modelo $h$ construida sobre los datos de training $D_{tr}$ se sobreajusta a los datos en $D$ si existe una $h`$ alternativa tal que el accuracy de $h$ en los datos de training $D_{tr}$ es mejor que el de $h´$, sin embargo, el accuracy de $h'$ en los datos de test $D_{te}$ es mejor que el de $h$. 
+
+Conviene matizar
+
+* Esta definición de overfitting para un modelo $h$ requiere siempre de un modelo alternativo $h'$ que a veces no tenemos.
+
+* En la mayoría de paradigmas de aprendizaje, el proceso de entrenamiento del modelo $h$ no es iterativo, o al menos su evolución no se puede seguir de tal forma. Cuando usamos optimización por gradiente sí.
+
+* En el contexto de redes neuronales entrenadas con backpropagation, el overfitting the un modelo de red neuronal se puede monitorizar en términos de cómo evoluciona el error sobre ejemplos no usados en el entrenamiento. De manera simple podemos decir que __en la iteración actual__ un modelo tiende a sobreajustar si la tendencia del error de test es decreciente. 
+
+* Las redes neuronales son capaces de formar regiones altamente no lineales (es decir, muy complejas) con lo que son capaces de ajustarse a las particularidades específicas (esto incluye al ruido) de cualquier conjunto de datos. Por lo tanto, el tamaño de nuestra red es crítico para el sobreajuste. Como regla básica podemos decir que si nuestra red es muy sencilla en comparación con el modelo ideal que estamos buscando, nunca sobreajustará. Si es muy completa, probablemente lo hará y tendremos que poner los medios para que esto no ocurra. Vamos a ver dos enfoques básicos: la regularización/penalización (o cómo controlar el crecimiento de los pesos de la red para que no sobreajuste) y el dropout (o cómo elegir qué pesos ajustar en cada iteración para que la red no sobreajuste).
+
+Pero antes, combiene también introducir el fenómeno de los vanishing gradients.
+
+### Vanishing gradients
+
+En el algoritmo de backpropagation, cuando se calculan los gradientes que van a cuantificar la contribución al error de salida de cada uno de los nodos en cada capa, __las señales de error calculadas a partir de dichas contribuciones tienden bien a crecer excesivamente o bien a decrementar hasta hacerse muy próximas a cero__. 
+
+La relación de proporción entre 
+
+* el error de la predicción de la red cuando se propaga hacia atrás y 
+
+* el tamaño de los pesos de cada arco
+
+es exponencial.
+
+En consecuencia, 
+
+* si los pesos crecen demasiado, pueden oscilar fuertemente 
+
+* si los pesos encogen demasiado, el aprendizaje se transforma en un proceso lento o, peor aun, nada efectivo. 
+
+## Técnicas para combatir el overfitting
+
+### Regularización $L_1$
+
+La penalización de tipo $L_1$ (también se denomina lasso regression) se basa en que, __en cada epoch de entrenamiento de la red, los pesos se encogen mediante una penalización aplicada a los mismos__. 
+
+Funciona usando la suma de los valores absolutos de los pesos de tal forma que la magnitud de la penalización no es más pequeña o más grande para pesos pequeños o grandes, respectivamente. La consequencia directa es que los pesos más pequeños pueden acabar haciéndose cero, lo cual significa que pierden toda relevancia en la red. 
+
+La penalización, $\lambda$, se aplica a la suma del valor absoluto de los pesos, como se ha dicho y es un parámetro más de nuestro algoritmo de entrenamiento.
+
+De manera genérica, la regularización $L_1$, se puede aplicar a la función a minimizar por un Backpropagation, como sigue
+
+$$E=\frac{1}{2}\sum(t_j - o_j)^2 + \lambda\sum|w_i|,$$
+
+en donde 
+
+* $t_j$ se refiere al valor de la variable de salida $j$-ésima para un ejemplar de entrenamiento concreto mientras que 
+
+* $o_j$ es lo que genera la red para aproximar ese valor y 
+
+* $\lambda \in [0,1]$, el parámetro que regula la intensidad de la regularización. 
+
+Téngase en cuenta que el que se tienda a que ciertos pesos se hagan cero puede verse como equivalente a seleccionar ciertos predictores frentes a otros (i.e. determinados predictores no se usarán en el modelo porque los $w$ en los arcos que salen de ellos tienden a cero). 
+
+#### y en redes neuronales
+
+En el contexto de las redes neuronales, dado que 
+
+* se trabaja con gradientes (i.e. se ha de derivar el error), 
+
+* se formula la función de error como dependiente de la matriz de pesos, 
+
+* al aplicarse el gradiente, el término de penalización es simplemente $\lambda \times sign(w)$ en donde $w$ es un peso de un determinado nodo. 
+
+Por tanto, en su aplicación básica la penalización es siempre la misma para cada nodo. Eso es así porque al derivar, la expresión queda
+$$\Delta w_{ij} = \mu [x_i (o_j - t_j) o_j (1-o_j)] + \lambda \times sign(w_{ij}).$$
+
+### Regularización $L_2$
+
+También denominada regresión por riscos (ridge regression) se basa en la misma idea de penalizar los pesos. Sin embargo, __en lugar de usar como penalización un valor proporcional a la suma absoluta de los coeficientes, la penalización se basa en sus cuadrados (pesos mayores resultarán en penalizaciones mayores, no lineales)__. 
+
+En el contexto de las redes neuronales, es lo que se denomina _weight decay_ ya que, en cada actualización de todo peso, hay una penalización multiplicativa por el peso (como en $L_1$). 
+
+#### En redes neuronales...
+
+La formulación de la nueva función de error es equivalente, $$E=\frac{1}{2}\sum(t_j - o_j)^2 + \frac{\lambda}{2n}\sum\limits_{w} w^2.$$
+
+A diferencia del efecto de $L_1$, en donde la actualización es la misma para todos los pesos de la red, en $L_2$, la corrección se ceba en aquellos pesos más altos. En todo caso, en ambas estrategias de regularización, los pesos van decayendo, sucesivamente, a cero. 
+
+Nótese que es posible utilizar $L_1$ junto con $L_2$. En este caso, se entiende que $L_1$ realiza una selección de variables, si se aplica a los pesos de los arcos de la capa de entrada a la oculta. Algoritmos como el elastic net aplican ambas formas de regularización de manera simultánea pudiéndose aplicar en problemas con varios miles o cientos de miles de variables de entrada. 
+
+### Dropout 
+
+Dropout <http://jmlr.org/papers/v15/srivastava14a.html> es una técnica que intenta aliviar el sobreaprendizaje como las otras dos que hemos visto, sin embargo no se basa en la redefinición del error. Lo que quiere decir que será de utilidad cuando la arquitectura de la red sea compleja o, de manera equivalente, cuando el conjunto de datos no sea excesivamente grande. 
+
+Cuando los datos de entrenamiento son limitados la red se ajustará excesivamente a esos datos y mucho del ruido capturado de dicho conjunto no se verá reflejado en el conjunto de validación con lo que el error de generalización será considerable. Por otro lado, existen arquitecturas de deep learning no excesivamente complejas con lo que el dropout se aplica de manera regular en este campo. La idea se resume en la figura \ref{fig:dropout}.
+
+![Red total a la izquierda y hipotética configuración drop-out en un instante de tiempo\label{fig:dropout}](https://s3-ap-south-1.amazonaws.com/av-blog-media/wp-content/uploads/2017/05/20073927/dropout.png)
+
+Y trata de, 
+
+* por un lado, de la combinación de múltiples redes y sus salidas en una sola a partir de la siguiente idea afortunada: mediante la eliminación de nodos de una red fully feedforward y sus correspondientes fan-in (arcos que entran al nodo) y fan-out (arcos que salen del nodo), podemos obtener $2^n$ combinaciones posibles de redes diferentes, siendo $n$ el número de nodos. Dado que la combinación de modelos (i.e. ensembles) es siempre beneficiosa frente al uso de modelos únicos, necesariamente debe tener un efecto positivo. 
+
+* Por el otro, combate el overfitting.
+
+En definitiva, __el dropout consiste en la anulación temporal (de un epoch a otro o actualización de batches) de nodos y la eliminación de sus correspondientes conexiones al resto de nodos__. 
+
+La decisión sobre qué nodo eliminar es probabilista, e.g. cada nodo se mantiene en la red con una probabilidad fija $p$, independiente del resto de unidades. Un valor de $p=0.5$ parece ser adecuado para la mayoría de nodos y aplicaciones se aconseja valores $p\approx 1$  para los nodos de entrada a la red. 
+
+> ¿Cómo se usan en realidad? Se simula la probabilidad al ajustarse los pesos, se obvia al hacer inferencia.
+ 
+Como puede verse, la red se entrena con dropout, y para testarla y usarla para realizar predicciones, asumimos la idea de que la red total es en realidad una agregación de todas las posibles $2^n$ redes al aplicar los pesos modulados por la probabilidad correspondiente de dropout para el nodo. La interpretación que a nosotros nos interesa es la de la regularización de los pesos: es una forma de aplicarles ruido al multiplicar por $p$. En términos prácticos, el dropout puede enlentecer el aprendizaje ya que, en teoría, se deberían necesitar modelos más complejos (al eliminar nodos constantemente) pero a cambio el learning rate se puede aumentar, necesitándose menos epochs en el traning. Además, puede usarse en combinación con $L_1$ o $L_2$. En resumen: dropout implica modelos más grandes, que aprenden más rápido, pero con un control de la magnitud de los parámetros de la red. 
+
+Nótese que, si asumimos un poder de computación ilimitado, el estándar de oro bayesiano para regularizar un modelo de tamaño fijo (i.e. número fijo de pesos) es para cada posible combinación de valores para los parámetros del modelo, obtenemos un promedio de las predicciones para todas esas combinaciones, ponderando cada modelo por su probabilidad posterior, dados los datos de entrenamiento.
+
+## Discusión sobre regularización
+
+La regularizacíon tiene un objetivo claro y es, sobre todo, el evitar el sobreaprendizaje. Dado que, a priori, podemos usar redes tan complejas como queramos para el aprendizaje, si o bien
+
+* nuestro problema de aprendizaje no es suficientemente complejo (i.e. los datos que tenemos no son un gran volumen de ellos y todas las clases/conceptos estás suficientemente reflejados en sus ejemplos) o bien
+
+* el conjunto de datos es muy pequeño para una red demasiado grande,
+corremos el riesgo de sobredimensionar nuestra red con lo que esta recordará los datos de entrenamiento de manera excesiva y su capacidad de generalizacióne estará mermada. 
+
+Sin embargo habrá casos en los que sea suficiente aprender con redes modestas (quizás de varias capas > 2 pero siendo estas sencillas) y la regularización no sea necesaria. No suele ser el caso en el contexto del deep learning.
+
+Por otro lado, téngase en cuenta que podemos ser selectivos, para cada capa, en el tipo de regularización que queremos aplicar. En Keras, esto es especialmente fácil ya que los modelos se especifican en base a cada capa.
+
+## Regularización en Keras
+
+Podemos usar regularización en Keras de manera sencilla, y ejemplificamos con MNIST.
+
+Supongamos que queremos trabajar con regularización en Keras al desarrollar nuestro clasificador para dígitos escritos a mano alzada basado en MNIST. Para poder hacer experimentos interactivos en el laboratorio, al tiempo que facilitamos la aparición del sobreaprendizaje, vamos a reducir nuestro problema a trabajar con 5000 ejemplares, en lugar de 60000, y una red de dimensiones más pequeñas.
+
+### Preparación de los datos de aprendizaje
+
+Primero cargamos nuestros datos, 
+
+* definimos variables para training y test, entrada y salida,
+
+* transformamos los arrays de entrada (3D) a la forma que los queremos (cada figura un vector de 784 valores),
+
+* seleccionamos 5000 ejemplares de manera aleatoria para el training, la proporción correspondiente para el test (10/60), 
+
+
+
+y estamos listos.
+
+```{r}
+library(keras)
+set.seed(12345)
+n = 5000
+mnist = dataset_mnist()
+x_train = mnist$train$x
+y_train = mnist$train$y
+x_test = mnist$test$x
+y_test = mnist$test$y
+x_train = array_reshape(x_train, c(nrow(x_train), 784))
+x_test = array_reshape(x_test, c(nrow(x_test), 784))
+mask_train = sample(1:nrow(x_train),n)
+mask_test = sample(1:nrow(x_test),n*0.16)
+x_train_s = x_train[mask_train,]
+x_test_s = x_test[mask_test,]
+y_train_s = y_train[mask_train]
+y_test_s = y_test[mask_test]
+str(x_train_s)
+str(x_test_s)
+str(y_train_s)
+str(y_test_s)
+```
+
+Finalmente comprobamos que tanto en el conjunto de training como en el de test tenemos una proporción correcta de dígitos.
+
+
+```{r, cache=TRUE}
+barplot(table(y_train_s),main="Proportion of image types at small MNIST (train data)",
+			xlab="Digits")	
+```
+
+
+```{r, cache=TRUE}
+barplot(table(y_test_s),main="Proportion of image types at small MNIST (test data)",
+			xlab="Digits")	
+```
+
+Ahora escalamos los datos en valores $[0,1]$, codificamos de forma `one-hot` con 10 posibles valores.
+
+```{r}
+x_train_s <- x_train_s / 255
+x_test_s <- x_test_s / 255
+y_train_s <- to_categorical(y_train_s, 10)
+y_test_s <- to_categorical(y_test_s, 10)
+str(x_train_s)
+str(x_test_s)
+str(y_train_s)
+str(y_test_s)
+```
+
+### Una red simple
+
+
+Ahora creamos una red como sigue: una primera capa con 784 nodos a la entrada que conectan con 30 nodos a la salida, con activación sigmoidal, como en la práctica anterior. Esta capa primera la unimos a una segunda capa de salida, de 10 nodos, con activación de tipo softmax. 
+
+Además, indicamos que queremos usar el algoritmo RMSProp, con un learning rate de 0.005, que la función de error es la entropía cruzada, y que lo que reportamos a la salida es el accuracy, siendo esta $$Acc=\frac{TP + TN}{P + N}.$$ 
+
+```{r}
+model_a = keras_model_sequential() 
+model_a %>% 
+  layer_dense(units = 30, activation = 'sigmoid', input_shape = c(784)) %>% 
+  layer_dense(units = 10, activation = 'softmax')
+summary(model_a)
+model_a %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(0.005),
+  metrics = c('accuracy')
+)
+```
+
+Como vemos, esto genera una red de 23860 parámetros, incluyendo pesos y sesgos. Vamos a utilizar 20% de los ejemplares para el test, los ejemplares de training se van a presentar en tandas de 40 y vamos a hacer un entrenamiento de 50 épocas.
+
+
+```{r}
+history = model_a %>% fit(
+  x_train_s, y_train_s, 
+  epochs = 50, 
+  batch_size = 40, 
+  validation_split = 0.2,
+  verbose = 0
+)
+```
+
+Ahora ploteamos los errores de entrenamiento y validación a lo largo de los epochs.
+
+```{r}
+vymax = max(c(history$metrics$loss,history$metrics$val_loss))
+plot(history$metrics$loss,main="Training/Validation errors for small MNIST",col="blue",
+     type="l",xlab="Epochs",ylab="Loss",ylim=c(0,vymax))
+lines(history$metrics$val_loss,col="red")
+```
+
+Como vemos, el error de validación empeora tras un número de epochs concreto. Lo que quiere decir que hemos incurrido en sobreaprendizaje. Vamos a ver cómo lidiar con este problema mediante la aplicación de diferentes esquemas de regularización. 
+
+### Regularización $L_1$
+
+En Keras, los regularizadores `regularizers`, son el mecanismo por el que modificar la actualización de los pesos como nos convenga para evitar el overfitting. Podemos tanto usar de tipo $L_1$ como $L_2$ como ambos juntos al modo de una elastic net. Y lo hacemos cuando creamos una capa de tipo `layer_dense`. En la red siguiente utilizamos el parámetro `kernel_regularizer`, con un valor para $\lambda=0.001$. El resto de elementos de la red no va a cambiar con respecto a la anterior.
+
+```{r}
+model_b = keras_model_sequential() 
+model_b %>% 
+  layer_dense(units = 30,
+              #Podemos usar regularizer_l1, regularizer_l2
+              #y regularizer_l1_l2
+              kernel_regularizer = regularizer_l1(0.001),
+              input_shape = c(784)) %>%
+  layer_activation("sigmoid") %>% 
+  layer_dense(units = 10) %>%
+  layer_activation("softmax")
+
+summary(model_b)
+model_b %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(0.005),
+  metrics = c('accuracy')
+)
+history_b = model_b %>% fit(
+  x_train_s, y_train_s, 
+  epochs = 50, 
+  batch_size = 40, 
+  validation_split = 0.2,
+  verbose = 2)
+```
+
+Como vemos, la red es del mismo tamaño en términos de parámetros.
+
+### Regularización $L_2$
+
+A continuación vemos como creat un regularizador del tipo L2. Utilizaremos el mismo valor para $\lambda$.
+
+```{r}
+model_c = keras_model_sequential() 
+model_c %>% 
+  layer_dense(units = 30,
+              #Podemos usar regularizer_l1, regularizer_l2
+              #y regularizer_l1_l2
+              kernel_regularizer = regularizer_l2(0.001),
+              input_shape = c(784)) %>%
+  layer_activation("sigmoid") %>% 
+  layer_dense(units = 10) %>%
+  layer_activation("softmax")
+
+summary(model_c)
+model_c %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(0.005),
+  metrics = c('accuracy')
+)
+history_c = model_c %>% fit(
+  x_train_s, y_train_s, 
+  epochs = 50, 
+  batch_size = 40, 
+  validation_split = 0.2,
+  verbose = 2)
+```
+
+### Dropout
+
+Y ahora el drop-out, que haremos de manera diferente. Vamos a aplicar dropout a los pesos que van desde la capa oculta a la capa de salida. La probabilidad de descartar un peso para su actualización en una iteración determinada va a ser 0.5. Definimos la operación de drop-out como una capa más que no va a añadir parámetros adicionales al modelo lo cual es de agradecer. Nótese que en TF y Keras-Python es posible aplicar el Drop-out a los nodos de entrada. Sin embargo en Keras-R no es tan sencillo.
+
+```{r}
+model_d = keras_model_sequential() 
+model_d %>% 
+  layer_dense(units = 30, activation="sigmoid",
+              input_shape = c(784)) %>%
+  layer_dropout(rate=0.5) %>%
+  layer_dense(units = 10,activation="softmax")
+  
+summary(model_d)
+model_d %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(0.005),
+  metrics = c('accuracy')
+)
+history_d = model_d %>% fit(
+  x_train_s, y_train_s, 
+  epochs = 50, 
+  batch_size = 40, 
+  validation_split = 0.2,
+  verbose = 2)
+```
+
+### Comparación de enfoques
+
+Vamos a comparar los enfoques de manera inicial con una base en los resultados de entrenamiento. Como hemos podido ver, se han creado sendos modelos a, b, c y d, correspondientes a no regularización, de tipo $L_1$, tipo $L_2$ y dropout respectivamente. Sus correspondientes resultados los almacenamos en variables con prefijo `history`.
+Si ahora representamos una comparativa basada en plotear tanto los errores de aprendizaje como de validación, siempre se va a repetir el mismo patrón: el error de entrenamiento va a ser optimista con respecto al de test. Todos los esquemas con regularización van a controlar el overfitting.
+
+```{r}
+vymax = max(c(history$metrics$loss,
+              history$metrics$val_loss,
+              history_b$metrics$loss,
+              history_b$metrics$val_loss,
+              history_c$metrics$loss,
+              history_c$metrics$val_loss,
+              history_d$metrics$loss,
+              history_d$metrics$val_loss))
+plot(history$metrics$loss,main="Training/Validation errors for small MNIST",col="blue",
+     type="l",xlab="Epochs",ylab="Loss",ylim=c(0,vymax))
+lines(history$metrics$val_loss,col="red")
+lines(history_b$metrics$loss,col="green")
+lines(history_b$metrics$val_loss,col="darkgreen")
+lines(history_c$metrics$loss,col="cyan")
+lines(history_c$metrics$val_loss,col="darkblue")
+lines(history_d$metrics$loss,col="darkviolet")
+lines(history_d$metrics$val_loss,col="darkred")
+legend("topright",fill=c("blue","red","green","darkgreen",
+                         "cyan","darkblue","darkviolet","darkred"),
+       title="Regularizaciones",
+			col=c("blue","red","green","darkgreen",
+                         "cyan","darkblue","darkviolet","darkred"),
+			legend=c("Training (no reg)",
+			         "Validation (no reg)",
+			         "Training (L1)",
+			         "Validation (L1)",
+			         "Training (L2)",
+			         "Validation (L2)",
+			         "Training (Dropout)",
+			         "Validation (Dropout)"),cex=0.5)
+```
+
+Y ahora evaluamos con los datos de test.
+
+```{r}
+results = NULL
+results[["noreg"]] = evaluate(model_a,x_test_s,y_test_s)
+results[["l1"]] = evaluate(model_b,x_test_s,y_test_s)
+results[["l2"]] = evaluate(model_c,x_test_s,y_test_s)
+results[["dropout"]] = evaluate(model_d,x_test_s,y_test_s)
+accs = unlist(lapply(results,function(x){ return(x["accuracy"])}))
+barplot(accs,
+        main="Accuracy",names.arg=names(results))
+print(accs)
+```
+
+Comentar los resultados en clase. ¿Qué podemos decir a partir de comparar los diferentes errores de entrenamiento entre sí? ¿Qué podemos decir de los datos de training?
+
+
+
+
+
+
+ 
+
+
+
