@@ -28,6 +28,8 @@ library(plotly)
 library(mlbench)
 library(rpart.plot)
 library(Metrics)
+library(keras)
+library(tensorflow)
 ```
 
 ```{r setup, include=FALSE}
@@ -512,6 +514,7 @@ spotify = spotify[,-1]
 
 spotify$mode = factor(spotify$mode)
 spotify$key = factor(spotify$key)
+spotify$time_signature = factor(spotify$time_signature)
 
 spotify$album_release_date = as.Date(spotify$album_release_date)
 spotify$snapshot_date = as.Date(spotify$snapshot_date)
@@ -652,7 +655,41 @@ spotify <- spotifyEliminacion[, 1:25]
 rm(spotifyEliminacion); rm(subset_data); 
 ```
 
-Otra idea que se nos ocurre es tener en cuenta los días que hay desde que se publica una canción hasta que esta obtiene una nueva posición en el ranking, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de **días que una canción tardó en hacerse popular**, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
+
+**Respóndase a las siguientes preguntas en relación a la preparación de datos.**
+
+\* **¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
+
+Los predictores que habría que normalizar son principalmente las características de las canción, para ello se podría utilizar el método min-max o la estandarización, pensando de cara a la próxima parte de la práctica y sabiendo de la existencia de valores negativos, creemos que es mejor hacerlo mediante el z-score para ello vamos a utilizar la función `scale` disponible en R.
+
+```{r}
+songFeatures <-  c('danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms')
+```
+
+Normalizar estas características puede ayudar a mejorar convergencia y rendimiento del modelo. Sobretodo si nos encontramos con magnitudes distintas como es por ejemplo duration_ms con respecto a danceability. Así la influencia de estas características en futuros modelos, como el de deep learning será similar y no tendrán tanto peso aquellas con magnitudes tan grandes.
+
+```{r}
+spotiNormalizado = spotify
+min_max_normalize <- function(x) {
+  (x - min(x)) / (max(x) - min(x)) * 2 - 1
+}
+spotiNormalizado[, songFeatures] <- lapply(spotiNormalizado[, songFeatures], min_max_normalize)
+```
+
+Además, creemos que sería interesante escalar debido al uso que le vamos a dar más adelante variables como `daily_movement`, `weekly_movement` y, como `daily_rank` tiene relación con las otras también la vamos a escalar.
+
+```{r}
+masDatos <- c('daily_movement', 'weekly_movement', 'daily_rank') 
+
+spotiNormalizado[, masDatos] <- lapply(spotiNormalizado[, masDatos  ], min_max_normalize)
+```
+
+
+\* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
+
+Sí, lo que vamos a hacer es combinar las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias` y añadir los atributos `between_week_prev_popularity` y `day_prev_popularity` para tener guardados los datos de la popularidad previa, aprovechando así la secuencialidad.
+
+Con `diferencia_dias` vamos a tener en cuenta los días que hay desde que se publica una canción hasta que esta obtiene una nueva posición en el ranking, la forma en la que podemos hacer esto es restar `snapshot_date` con `album_release_date` y tener así un registro del número de **días que una canción tardó en hacerse popular**, como la fecha de salida de una canción puede ser anterior a la salida de un álbum pondremos como 0 aquellas canciones que tienen como diferencia de fechas un valor negativo.
 
 ```{r}
 diferencia_dias = as.numeric(spotify$snapshot_date - spotify$album_release_date)
@@ -675,10 +712,30 @@ spotify <- spotify %>%
   mutate(day_prev_popularity = if_else(row_number() == 1, 0, if_else(snapshot_date - lag(snapshot_date) == 1, lag(popularity), 0)))
 
 
-#colSums(is.na(spotify))
 ```
 
 Primero organizamos la información por identificador y país, asegurándose de que los registros estén ordenados; luego, para cada canción se determina la popularidad que tenía en fechas anteriores, considerando únicamente aquellas con una diferencia de 1 a 7 días respecto a la fecha actual. El resultado es una nueva columna llamada `between_week_prev_popularity`, que refleja la popularidad previa de cada canción en el tiempo. Tambien se hace el mismo proceso para solamente el día anterior. Para la primera aparición por lista de cada canción se asigna su propia popularidad porque de no ser así nos saldria un valor NA.
+
+
+También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
+
+```{r}
+epsilon <- 1e-10
+# Calcular velocidad_popularidad con epsilon para evitar divisiones entre 0
+spotify$velocidad_popularidad <-  1 / (spotify$diferencia_dias + epsilon)
+```
+
+\* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
+
+El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, un poco más arriba hemos creado una variable `prev_popularity` gracias a que las fechas son secuenciales y podemos acceder a la popularidad a lo largo de los días. De esta forma podemos analizar cómo cambia la popularidad de una canción a lo largo de la semana anterior, proporcionando información valiosa para entender patrones y tendencias en el comportamiento de reproducción de las canciones en la plataforma.
+
+
+Antes de empezar el apartado C, vamos a eliminar finalmente los atributos que creemos que no nos van a ser de utilidad para realizar nuestros modelos. Para ello primero vamos a hacer un repaso con los pasos seguidos anteriormente:
+ - Se eliminaron valores nulos, para poder hacer agrupaciones sin preocuparnos de los NA'S
+ - Se eliminaron "outliers", aunque los eliminados fueron nuestra decisión, ya que vimos que había demasiados datos considerados outliers en distintos valores fuera del IQR que nos parecian representativos y necesarios. 
+
+
+
  
 
 Hasta ahora no hemos hecho nada más que añadir columnas, pero sabemos de antemano que no todas ellas nos van a ser de utilidad para entrenar nuestro modelo. Sin embargo, no las hemos eliminado anteriormente para hacer la limpieza de datos pero ahora procedemos a quitar las columnas `spotify_id`, `name`, `artists`, `album_name`, `album_release_date`   
@@ -705,68 +762,28 @@ eliminar = c("spotify_id", "name", "artists", "album_name", "album_release_date"
 Hasta ahora hemos borrado los parametros que nos parecían más evidentes, pero pensando en la resolución del problema, nosotras tambien llegamos a la conclusión de que los parámetros `daily_movement`, `daily_rank` y `weekly_movement` a pesar de que nos aportarán algo y sabemos que estan relacionados con la popularidad, no nos ayudarán a determinar si una canción cualquiera se va a hacer famosa (al igual que con el parámetro `artists`). Hemos llegado a esta conclusión debido a que el pensamiento que tenemos nosotras al hacer esta practica es que vamos a crear un proyecto para determinar si una cancion será popular o no, y estos tres parametros nos dan informacion sobre canciones en la lista pero nada más. Para confirmar nuestras sospechas trabajaremos con un dataset conjunto que si que tenga estos tres parametros, y despues comprobaremos la precisión. Nuestras conclusiones previas es que sobre estos parametros si que cae cierta importancia y que puestos más altos en el daily rank supondran una mayor popularidad pero creemos que no nos servira de mucho a la hora de determinar la posible popularidad de una canción futura.
 ```{r}
 spotify = spotify[, !names(spotify) %in% eliminar]
+spotiNormalizado = spotiNormalizado[, !names(spotiNormalizado) %in% eliminar]
+
+nuevas_columnas = c('diferencia_dias', 'between_week_prev_popularity','day_prev_popularity', 'velocidad_popularidad')
+spotiNormalizado[nuevas_columnas] <- spotify[, nuevas_columnas]
 spotifyNoMovements = spotify
+
 eliminar = c("daily_rank", "daily_movement", "weekly_movement")
 spotifyNoMovements = spotifyNoMovements[, !names(spotify) %in% eliminar]
+
+spotifyNormNoMovements = spotiNormalizado
+spotifyNormNoMovements = spotiNormalizado[,!names(spotiNormalizado) %in% eliminar ]
 ```
 
 
 ```{r}
-#SAVE POINT PARA CUANDO LA CAGO. BORRAR 
+#SAVE POINT PARA CUANDO LA CAGO. BORRAR  Y LO DE ABAJO 
 savePoint = spotify
 ```
 
+creemos que saber de antemano la popularidad exacta de una canción va a ser muy complicado. Creemos que es mejor idea hacer una factor de la popularidad donde se adivine si esta va a ser muy popular (su valor de popularidad es de entre 90-100), si va a ser popular (su valor de popularidad es de entre 60-90) o si no va a ser muy popular (su valor de popularidad es de entre 30-60) o si apenas lo va a ser (0-30). Porque pensamos que el objetivo, es saber si la canción va a ser buena o no y preferimos abordar un problema de clasificación a un problema de regresión, ya que en caso de llevar a la realidad, creemos que interesaría más darle a conocer este dato a un número de popularidad más exacta, por lo que, si la otra idea no es abordable llevaremos a cabo una que trabaje con la variable `popularity`, factorizada, de la siguiente manera:
 
-**Respóndase a las siguientes preguntas en relación a la preparación de datos.**
-
-\* **¿Qué predictores habría que normalizar? ¿Por qué? ¿Cuál sería la estrategia de normalización en cada caso?**
-
-Los predictores que habría que normalizar son principalmente las características de las canción, para ello se podría utilizar el método min-max o la estandarización, pensando de cara a la próxima parte de la práctica y sabiendo de la existencia de valores negativos, creemos que es mejor hacerlo mediante el z-score para ello vamos a utilizar la función `scale` disponible en R.
-
-```{r}
-songFeatures <-  c('danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms', 'diferencia_dias')
-```
-
-Normalizar estas características puede ayudar a mejorar convergencia y rendimiento del modelo. Sobretodo si nos encontramos con magnitudes distintas como es por ejemplo duration_ms con respecto a danceability. Así la influencia de estas características en futuros modelos, como el de deep learning será similar y no tendrán tanto peso aquellas con magnitudes tan grandes.
-
-```{r}
-spotiNormalizado = spotify
-min_max_normalize <- function(x) {
-  (x - min(x)) / (max(x) - min(x)) * 2 - 1
-}
-spotiNormalizado[, songFeatures] <- lapply(spotiNormalizado[, songFeatures], min_max_normalize)
-```
-
-Además, creemos que sería interesante escalar `daily_movement`, `weekly_movement`, `between_week_prev_popularity`, `day_prev_popularity` y, como `daily_rank` tiene relación con las otras también la vamos a escalar.
-
-```{r}
-masDatos <- c('daily_movement', 'weekly_movement', 'daily_rank', 'between_week_prev_popularity', 'day_prev_popularity') 
-
-spotiNormalizado[, masDatos] <- lapply(spotiNormalizado[, masDatos  ], min_max_normalize)
-```
-
-
-\* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
-
-Sí, lo hemos hecho anteriormente combinando las variables `album_release_date` y `snapshot_date` dando lugar a `diferencia_dias` y hemos añadido los atributos `between_week_prev_popularity` y `day_prev_popularity` para tener guardados los datos de la popularidad previa.
-
-También podríamos considerar la creación de una nueva varibale que represente la rapidez con la que una canción se vuelve popular. Por ejemplo, podríamos crear una variable `velocidad_popularidad` que sea el inverso de la diferencia de días, de manera que canciones que se vuelven populares rápidamente tengan valores más altos en esta nueva variable.
-
-```{r}
-epsilon <- 1e-10
-# Calcular velocidad_popularidad con epsilon para evitar divisiones entre 0
-spotify$velocidad_popularidad <-  1 / (spotify$diferencia_dias + epsilon)
-spotiNormalizado$velocidad_popularidad <- 1 / (spotify$diferencia_dias + epsilon)
-```
-
-\* **¿Cómo podría aprovecharse el carácter secuencial de los datos?**
-
-El carácter secuancial de los datos podría aprovechase al considerar la creación de variables que capturen tendencias a lo largo del tiempo. Por ejemplo, un poco más arriba hemos creado una variable `prev_popularity` gracias a que las fechas son secuenciales y podemos acceder a la popularidad a lo largo de los días. De esta forma podemos analizar cómo cambia la popularidad de una canción a lo largo de la semana anterior, proporcionando información valiosa para entender patrones y tendencias en el comportamiento de reproducción de las canciones en la plataforma.
-
-
-Antes de empezar el apartado C, creemos que saber de antemano la popularidad exacta de una canción va a ser muy complicado. Creemos que es mejor idea hacer una factor de la popularidad donde se adivine si esta va a ser muy popular (su valor de popularidad es de entre 90-100), si va a ser popular (su valor de popularidad es de entre 60-90) o si no va a ser muy popular (su valor de popularidad es de entre 30-60) o si apenas lo va a ser (0-30). Porque pensamos que el objetivo, es saber si la canción va a ser buena o no y preferimos abordar un problema de clasificación a un problema de regresión, ya que en caso de llevar a la realidad, creemos que interesaría más darle a conocer este dato a un número de popularidad más exacta, por lo que, si la otra idea no es abordable llevaremos a cabo una que trabaje con la variable `popularity`, factorizada, de la siguiente manera:
-
-```{r, include= false}
+```{r, eval= false}
 intervalos <- c(0, 30, 60, 90, 101)
 spotify2 = spotify
 spotify2$popularity <- cut(spotify2$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
@@ -1054,8 +1071,47 @@ Los requisitos para el Deep Learning incluyen:
 Aunque hemos tenido en cuenta estos requisitios en la preparación de datos, hemos modificado un podo el conjunto de datos por lo que vamos a terminar de arreglarlo para poder utilizarlo.
 
 ```{r}
-spotiNormalizado[, 'velocidad_popularidad'] <- lapply(spotiNormalizado[, 'velocidad_popularidad'], min_max_normalize)
+restantesNormal = c('velocidad_popularidad', 'diferencia_dias', 'between_week_prev_popularity', 'day_prev_popularity')
+spotiNormalizado[, restantesNormal] <- lapply(spotiNormalizado[, restantesNormal], min_max_normalize)
+spotifyNormNoMovements[, restantesNormal] <- lapply(spotifyNormNoMovements[, restantesNormal], min_max_normalize)
 ```
+A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`
+
+```{r}
+key_values <- c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+
+for (key_value in key_values) {
+  column_name <- paste0("key_", key_value)
+  spotiNormalizado[column_name] <- as.integer(spotiNormalizado$key == key_value)
+  spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$key == key_value)
+}
+
+time_signatures <- c(1,3,4,5)
+
+for (time_signature_v in time_signatures) {
+  column_name <- paste0("time_signature_", time_signature_v)
+  spotiNormalizado[column_name] <- as.integer(spotiNormalizado$time_signature == time_signature_v)
+  spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$time_signature == time_signature_v)
+}
+
+spotiNormalizado$is_explicit = ifelse(spotiNormalizado$is_explicit, 1, 0)
+spotifyNormNoMovements$is_explicit = ifelse(spotifyNormNoMovements$is_explicit, 1, 0)
+
+
+modes <- c(0,1)
+
+for (mode_value in modes) {
+  column_name <- paste0("time_signature_", mode_value)
+  spotiNormalizado[column_name] <- as.integer(spotiNormalizado$mode == mode_value)
+  spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$mode == mode_value)
+}
+
+eliminar = c('mode', 'key', 'is_explicit', 'time_signature')
+spotiNormalizado = spotiNormalizado[, !names(spotiNormalizado) %in% eliminar]
+spotifyNormNoMovements = spotifyNormNoMovements[, !names(spotifyNormNoMovements) %in% eliminar]
+
+```
+
 
 ```{r, eval=FALSE}
 set.seed(123)
@@ -1077,7 +1133,7 @@ spotiRNN.Datos.Prueba <- spotiNormalizado[-spotiRNN.Particion, ]
 modelo <- keras_model_sequential() 
 modelo %>%
   layer_dense(units = 64, input_shape = length(spotiRNN.Vars.Entrada.Usadas)) %>%
-  layer_activation('relu') %>% 
+  layer_activation('tanh') %>% 
   layer_dense(units = 10) %>% 
   layer_activation('softmax')
 
