@@ -813,9 +813,9 @@ Por otro lado `splitrule` es la regla que se utiliza para dividir cada nodo. Al 
 Y por ultimo `min.node.size` que es el numero de ejemplos que debe haber como minimo en cada nodo.
  En nuestro caso estaremos probando con 50,100 y 150 
 
-A continuacion se puede ver como hemos generado un grid y ademas hemos probado con distintos numeros de arboles. Para 200,300,400 y 500 y seguidamente veremos si el numero de arboles es significativo.
+A continuacion se puede ver como hemos generado un grid y además hemos probado con distintos números de árboles; para 200,300,400 y 500. De esta forma veremos si el número de árboles es significativo.
 
-En este chunk , se puede ver además comentado, que antes de ejecutar el codigo con todos los datos, se hizo tambien para un porcentaje de datos de la muestra. En nuestro caso fue del 30%. Al encontrar resultados significativos con el grid pensado, hemos decidido seguir adelante con él y más abajo se contrastaran los resultados y se probara que al menos una de las configuraciones nos produce unos resultados aceptables. 
+En este chunk, se puede ver además comentado, que antes de ejecutar el codigo con todos los datos, se hizo también para un porcentaje de datos de la muestra. En nuestro caso fue del 30%. Al encontrar resultados significativos con el grid pensado, hemos decidido seguir adelante con él y más abajo se contrastaran los resultados y se probara que al menos una de las configuraciones nos produce unos resultados aceptables. 
 
 ```{r}
 set.seed(123)
@@ -931,33 +931,45 @@ rf_200t = readRDS("numTrees200.rds")
 rf_300t = readRDS("numTrees300.rds")
 rf_400t = readRDS("numTrees400.rds")
 rf_500t = readRDS("numTrees500.rds")
+
+resultados <- data.frame(
+  "NumArboles" = c("200", "300", "400", "500"),
+  "Splitrule" = c(rf_200t$bestTune$splitrule, rf_300t$bestTune$splitrule, rf_400t$bestTune$splitrule, rf_500t$bestTune$splitrule),
+  "Min node size" = c(rf_200t$bestTune$min.node.size, rf_300t$bestTune$min.node.size, rf_400t$bestTune$min.node.size, rf_500t$bestTune$min.node.size),
+  "Mtry" = c(rf_200t$bestTune$mtry, rf_300t$bestTune$mtry, rf_400t$bestTune$mtry, rf_500t$bestTune$mtry)
+)
+resultados
 ```
 
+Podemos para todas las opciones de número de árboles que hemos contemplado obtenemos la misma configuración.
 
 ```{r}
-predicciones <- predict(rf_200t, newdata = testing)
-mae <- mae(predicciones, testing$popularity)
-rmse <- rmse(predicciones, testing$popularity)
+# Función para calcular MAE y RMSE
+calcular_metricas <- function(modelo) {
+  predicciones <- predict(modelo, newdata = testing)
+  mae <- mae(predicciones, testing$popularity)
+  rmse <- rmse(predicciones, testing$popularity)
+  return(c(MAE = mae, RMSE = rmse))
+}
 
-mae
-rmse
+# Comparación MAE y RMSE
+comparacion <- data.frame(
+  Tipo = c("MAE", "RMSE"),
+  rf_200t = calcular_metricas(rf_200t),
+  rf_300t = calcular_metricas(rf_300t),
+  rf_400t = calcular_metricas(rf_400t),
+  rf_500t = calcular_metricas(rf_500t)
+)
+comparacion
 ```
 
 
-```{r}
-predicciones <- predict(rf_300t, newdata = testing)
-mae <- mae(predicciones, testing$popularity)
-rmse <- rmse(predicciones, testing$popularity)
-
-mae
-rmse
-```
-
-
-Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 500 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement` 
+Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 300 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement`.
 
 ```{r, eval =FALSE}
-spotify = spotifyNoMovements
+#spotify = spotifyNoMovements
+inTraining <- createDataPartition(spotify$spotifyNoMovements, times=1,p = .80, list = FALSE)
+training <- spotifyNoMovements[ inTraining,]
 fitControl <- trainControl(## 10-fold CV
                            method = "cv",
                            number = 10)
@@ -971,7 +983,7 @@ mygrid
 spotifyrf <-train (popularity ~ ., data = training,
                    method = "ranger",
                    trControl = fitControl,
-                   num.trees = 500,
+                   num.trees = 300,
                    tuneGrid=mygrid)
 
 saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
@@ -996,8 +1008,20 @@ rmse
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
+Tras ver los resultados del apartado anterior, vamos a utilizar los siguientes hiperparámetros:
+
+- *Splitrule:* Este parámetro determina la regla utilizada para dividir los nodos en los árboles de decisión. En este caso, se ha elegido la opción `variance.` La regla de división basada en la varianza busca maximizar la homogeneidad de las variables en los nodos del árbol.
+
+- *Min.node.size:*  Este hiperparámetro establece el número mínimo de observaciones requeridas en un nodo terminal del árbol. En el contexto de Random Forest, un valor de 50 para `min.node.size` significa que un nodo terminal debe contener al menos 50 observaciones para considerarse válido. Este valor puede ayudar a controlar la complejidad del árbol y evitar sobreajustes.
+
+- *Mtry:* Este parámetro controla el número de variables aleatorias consideradas en cada división de nodo. Un valor de 6 para `mtry` implica que, en cada división, el algoritmo seleccionará aleatoriamente 6 variables predictoras del conjunto total de variables.
+
+La elección de estos valores específicos para los hiperparámetros se basa en los resultados obtenidos durante el análisis en el apartado anterior, Observamos que esta combinación en particular tuvo un el mejor rendimiento según el RMSE y MAE.
+
 ### Resultados
 **Describir los resultados del algoritmo.**
+
+
 
 ## Deep learning
 ### Funcionamiento
