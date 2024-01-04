@@ -30,6 +30,7 @@ library(rpart.plot)
 library(Metrics)
 library(keras)
 library(tensorflow)
+detach("package:keras")
 ```
 
 ```{r setup, include=FALSE}
@@ -684,6 +685,16 @@ masDatos <- c('daily_movement', 'weekly_movement', 'daily_rank')
 spotiNormalizado[, masDatos] <- lapply(spotiNormalizado[, masDatos  ], min_max_normalize)
 ```
 
+Tambien vamos a comprobarlo utilizando el escalado de z-score
+
+```{r}
+spotiNormalizadoZScore = spotify
+
+songFeaturestoNorm = c('danceability', 'energy', 'loudness', 'speechiness', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms', 'daily_movement', 'weekly_movement', 'daily_rank')
+
+spotiNormalizadoZScore[, songFeaturestoNorm] <- scale(spotiNormalizadoZScore[, songFeaturestoNorm],center = TRUE, scale = TRUE)
+```
+
 
 \* **¿Podría ser interesante transformar algún atributo o grupos de atributos en uno nuevo? ¿Por qué?**
 
@@ -763,9 +774,12 @@ Hasta ahora hemos borrado los parametros que nos parecían más evidentes, pero 
 ```{r}
 spotify = spotify[, !names(spotify) %in% eliminar]
 spotiNormalizado = spotiNormalizado[, !names(spotiNormalizado) %in% eliminar]
+spotiNormalizadoZScore = spotiNormalizadoZScore[, !names(spotiNormalizadoZScore) %in% eliminar]
 
 nuevas_columnas = c('diferencia_dias', 'between_week_prev_popularity','day_prev_popularity', 'velocidad_popularidad')
 spotiNormalizado[nuevas_columnas] <- spotify[, nuevas_columnas]
+spotiNormalizadoZScore[nuevas_columnas] <- spotify[, nuevas_columnas]
+
 spotifyNoMovements = spotify
 
 eliminar = c("daily_rank", "daily_movement", "weekly_movement")
@@ -773,6 +787,9 @@ spotifyNoMovements = spotifyNoMovements[, !names(spotify) %in% eliminar]
 
 spotifyNormNoMovements = spotiNormalizado
 spotifyNormNoMovements = spotiNormalizado[,!names(spotiNormalizado) %in% eliminar ]
+
+spotifyNormNoMovementsZScore = spotiNormalizadoZScore
+spotifyNormNoMovementsZScore = spotiNormalizadoZScore[,!names(spotiNormalizado) %in% eliminar ]
 ```
 
 
@@ -830,10 +847,25 @@ Donde `mtry` es el número de variables a considerar en cada división del árbo
 Por otro lado `splitrule` es la regla que se utiliza para dividir cada nodo. Al tratarse de un problema de regresión, estamos probando con variance y con extratree.
 Y por ultimo `min.node.size` que es el numero de ejemplos que debe haber como minimo en cada nodo.
  En nuestro caso estaremos probando con 50,100 y 150 
+ 
+### Grid Hiperparámetros
+**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
-A continuacion se puede ver como hemos generado un grid y además hemos probado con distintos números de árboles; para 200,300,400 y 500. De esta forma veremos si el número de árboles es significativo.
+A continuacion se puede ver como hemos generado un grid, implementando lo que comentamos en el apartado anterior y más adelante como hemos probado con distintos números de árboles; para los valores 200,300,400 y 500. De esta forma veremos si el número de árboles es significativo.
 
-En este chunk, se puede ver además comentado, que antes de ejecutar el codigo con todos los datos, se hizo también para un porcentaje de datos de la muestra. En nuestro caso fue del 30%. Al encontrar resultados significativos con el grid pensado, hemos decidido seguir adelante con él y más abajo se contrastaran los resultados y se probara que al menos una de las configuraciones nos produce unos resultados aceptables. 
+```{r}
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(50, 100, 150))
+
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+```
+
+
+En el primer chunk donde entrenamos un modelo, se puede ver además comentado, que antes de ejecutar el codigo con todos los datos, se hizo también para un porcentaje de datos de la muestra. En nuestro caso fue del 30%. Al encontrar resultados significativos con el grid pensado, hemos decidido seguir adelante con él y más abajo se contrastaran los resultados y se probara que al menos una de las configuraciones nos produce unos resultados aceptables. 
 
 ```{r}
 set.seed(123)
@@ -843,7 +875,8 @@ testing  <- spotify[-inTraining,]
 ```
 
 
-```{r rf200trees, eval=FALSE }
+
+```{r rf200trees, eval=FALSE}
 set.seed(44)
 #porcentaje_datos <- 0.30
 #tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
@@ -854,14 +887,7 @@ set.seed(44)
 #training <- spotify[ inTraining,]
 #testing  <- spotify[-inTraining,]
 
-fitControl <- trainControl(## 100-fold CV
-                           method = "cv",
-                           number = 10)
 
-mygrid <- expand.grid(
-  mtry = c(4, 5, 6),
-  splitrule = c("variance", "extratrees"),
-  min.node.size = c(50, 100, 150))
 
 rf_200t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
@@ -878,14 +904,6 @@ saveRDS(object= rf_200t, file = "numTrees200.rds")
 #training <- spotify[ inTraining,]
 #testing  <- spotify[-inTraining,]
 
-fitControl <- trainControl(## 100-fold CV
-                           method = "cv",
-                           number = 10)
-
-mygrid <- expand.grid(
-  mtry = c(4, 5, 6),
-  splitrule = c("variance", "extratrees"),
-  min.node.size = c(50, 100, 150))
 
 rf_300t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
@@ -902,15 +920,6 @@ saveRDS(object= rf_300t, file = "numTrees300.rds")
 #training <- spotify[ inTraining,]
 #testing  <- spotify[-inTraining,]
 
-fitControl <- trainControl(## 100-fold CV
-                           method = "cv",
-                           number = 10)
-
-mygrid <- expand.grid(
-  mtry = c(4, 5, 6),
-  splitrule = c("variance", "extratrees"),
-  min.node.size = c(50, 100, 150))
-
 rf_400t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -926,14 +935,6 @@ saveRDS(object= rf_400t, file = "numTrees400.rds")
 #training <- spotify[ inTraining,]
 #testing  <- spotify[-inTraining,]
 
-fitControl <- trainControl(## 100-fold CV
-                           method = "cv",
-                           number = 10)
-
-mygrid <- expand.grid(
-  mtry = c(4, 5, 6),
-  splitrule = c("variance", "extratrees"),
-  min.node.size = c(50, 100, 150))
 
 rf_300t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
@@ -944,7 +945,7 @@ rf_300t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_500t, file = "numTrees500.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 rf_200t = readRDS("numTrees200.rds")
 rf_300t = readRDS("numTrees300.rds")
 rf_400t = readRDS("numTrees400.rds")
@@ -961,7 +962,7 @@ resultados
 
 Podemos para todas las opciones de número de árboles que hemos contemplado obtenemos la misma configuración.
 
-```{r}
+```{r, eval=FALSE}
 # Función para calcular MAE y RMSE
 calcular_metricas <- function(modelo) {
   predicciones <- predict(modelo, newdata = testing)
@@ -998,6 +999,10 @@ mygrid <- expand.grid(
   min.node.size = 50)
 mygrid
 
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
 spotifyrf <-train (popularity ~ ., data = training,
                    method = "ranger",
                    trControl = fitControl,
@@ -1007,13 +1012,13 @@ spotifyrf <-train (popularity ~ ., data = training,
 saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 rfNoMov = readRDS("spotifyNoMovements.rds")
 ```
 
 
 
-```{r}
+```{r, eval=FALSE}
 predicciones <- predict(rfNoMov, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
@@ -1022,11 +1027,7 @@ mae
 rmse
 ```
 
-
-### Grid Hiperparámetros
-**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
-
-Tras ver los resultados del apartado anterior, vamos a utilizar los siguientes hiperparámetros:
+Tras ver los resultados del apartado anterior, podemos describir los hiperparametros escogidos del modelo:
 
 - *Splitrule:* Este parámetro determina la regla utilizada para dividir los nodos en los árboles de decisión. En este caso, se ha elegido la opción `variance.` La regla de división basada en la varianza busca maximizar la homogeneidad de las variables en los nodos del árbol.
 
@@ -1074,16 +1075,27 @@ Aunque hemos tenido en cuenta estos requisitios en la preparación de datos, hem
 restantesNormal = c('velocidad_popularidad', 'diferencia_dias', 'between_week_prev_popularity', 'day_prev_popularity')
 spotiNormalizado[, restantesNormal] <- lapply(spotiNormalizado[, restantesNormal], min_max_normalize)
 spotifyNormNoMovements[, restantesNormal] <- lapply(spotifyNormNoMovements[, restantesNormal], min_max_normalize)
+spotiNormalizadoZScore[, restantesNormal] = scale(spotiNormalizadoZScore[, restantesNormal],center = TRUE, scale = TRUE)
+spotifyNormNoMovementsZScore[, restantesNormal] = scale(spotifyNormNoMovementsZScore[, restantesNormal],center = TRUE, scale = TRUE)
 ```
-A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`
+A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`. Para ello vamos a utilizar la tecnica one-Hot-Encoding. Que nos permitira representar numéricamente variables categóricas y manejar variables categóricas con múltiples categorías, estas variables no las tendremos que normalizar, ya que hemos generado una columna nueva para cada posible valor de las columnas `key`, `mode`y `time_signature`, poniendo como valor 1 si coincide el valor original con el nombre de la columna.
 
 ```{r}
+savePointNNM = spotifyNormNoMovements
+savePointNorm = spotiNormalizado
+```
+
+
+```{r}
+
 key_values <- c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
 
 for (key_value in key_values) {
   column_name <- paste0("key_", key_value)
   spotiNormalizado[column_name] <- as.integer(spotiNormalizado$key == key_value)
   spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$key == key_value)
+  spotiNormalizadoZScore[column_name] <- as.integer(spotiNormalizadoZScore$key == key_value)
+  spotifyNormNoMovementsZScore[column_name] <- as.integer(spotifyNormNoMovementsZScore$key == key_value)
 }
 
 time_signatures <- c(1,3,4,5)
@@ -1092,73 +1104,352 @@ for (time_signature_v in time_signatures) {
   column_name <- paste0("time_signature_", time_signature_v)
   spotiNormalizado[column_name] <- as.integer(spotiNormalizado$time_signature == time_signature_v)
   spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$time_signature == time_signature_v)
+  spotiNormalizadoZScore[column_name] <- as.integer(spotiNormalizadoZScore$time_signature == time_signature_v)
+  spotifyNormNoMovementsZScore[column_name] <- as.integer(spotifyNormNoMovementsZScore$time_signature == time_signature_v)
 }
 
 spotiNormalizado$is_explicit = ifelse(spotiNormalizado$is_explicit, 1, 0)
 spotifyNormNoMovements$is_explicit = ifelse(spotifyNormNoMovements$is_explicit, 1, 0)
+spotiNormalizadoZScore$is_explicit = ifelse(spotiNormalizadoZScore$is_explicit, 1, 0)
+spotifyNormNoMovementsZScore$is_explicit = ifelse(spotifyNormNoMovementsZScore$is_explicit, 1, 0)
 
 
 modes <- c(0,1)
 
 for (mode_value in modes) {
-  column_name <- paste0("time_signature_", mode_value)
+  column_name <- paste0("mode_", mode_value)
   spotiNormalizado[column_name] <- as.integer(spotiNormalizado$mode == mode_value)
   spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$mode == mode_value)
+  spotiNormalizadoZScore[column_name] <- as.integer(spotiNormalizadoZScore$mode == mode_value)
+  spotifyNormNoMovementsZScore[column_name] <- as.integer(spotifyNormNoMovementsZScore$mode == mode_value)
+
 }
 
 eliminar = c('mode', 'key', 'is_explicit', 'time_signature')
 spotiNormalizado = spotiNormalizado[, !names(spotiNormalizado) %in% eliminar]
 spotifyNormNoMovements = spotifyNormNoMovements[, !names(spotifyNormNoMovements) %in% eliminar]
+spotiNormalizadoZScore = spotiNormalizadoZScore[, !names(spotiNormalizadoZScore) %in% eliminar]
+spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNormNoMovementsZScore) %in% eliminar]
 
 ```
-
-
-```{r, eval=FALSE}
-set.seed(123)
-
-# Definir las variables de entrada y salida
-spotiRNN.Var.Salida.Usada <- c("popularity")
-spotiRNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotiRNN.Var.Salida.Usada)
-
-# Crear una partición del 80% para entrenamiento y 20% para prueba
-spotiRNN.Particion <- createDataPartition(spotiNormalizado[[spotiRNN.Var.Salida.Usada]], 
-                                         p = 0.8, 
-                                         list = FALSE)
-
-# Crear conjuntos de entrenamiento y prueba
-spotiRNN.Datos.Entrenamiento <- spotiNormalizado[spotiRNN.Particion, ]
-spotiRNN.Datos.Prueba <- spotiNormalizado[-spotiRNN.Particion, ]
-
-# Configurar la red neuronal
-modelo <- keras_model_sequential() 
-modelo %>%
-  layer_dense(units = 64, input_shape = length(spotiRNN.Vars.Entrada.Usadas)) %>%
-  layer_activation('tanh') %>% 
-  layer_dense(units = 10) %>% 
-  layer_activation('softmax')
-
-# Compilar el modelo
-modelo %>% compile(
-  loss = "mean_squared_error",
-  optimizer = optimizer_rmsprop(),
-  metrics = c("mean_absolute_error")
-)
-
-# Entrenar el modelo
-historial_entrenamiento <- modelo %>% fit(
-  as.matrix(spotiRNN.Datos.Entrenamiento[, spotiRNN.Vars.Entrada.Usadas]),
-  spotiRNN.Datos.Entrenamiento[[spotiRNN.Var.Salida.Usada]],
-  epochs = 10,
-  batch_size = 32,
-  validation_split = 0.2 #######
-)
-```
+`
 
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
+Se consideran para la resolución del modelo `mlpKerasDropout` y `mlpKerasDecay`, creemos que los modelos de los costes no son los más acertados, debido a que no nos interesa tener como hiperparametro costes para el modelo que estamos resolviendo
+```{r}
+mlpDropoutInfo = getModelInfo("mlpKerasDropout")
+
+mlpDecayInfo = getModelInfo("mlpKerasDecay")
+mlpHiper = data.frame(mlpDropoutInfo$mlpKerasDropout$parameters, mlpDecayInfo$mlpKerasDecay$parameters)
+mlpHiper
+```
+
+Podemos ver como ambas funciones tienen en común los parametros `size`, `batch_size`, `lr`, `rho`, `decay`, `activation`
+//TODO TO DO
+ - size: Número de neuronas en una capa.
+ - batch_size: Cantidad de datos utilizados en cada actualización del modelo durante el entrenamiento.
+ - lr (tasa de aprendizaje): Controla el tamaño de los pasos durante la optimización.
+ - rho: Parámetro asociado con métodos de optimización específicos (como en RMSprop).
+ - decay: Decaimiento de la tasa de aprendizaje a lo largo del tiempo.
+ - activation: Función de activación aplicada a las salidas de las unidades en una capa.
+ 
+ por otro lado tenemos `dropout` que pertenece a mlpKerasDropout y `lambda` que pertenece a mlpKerasDecay
+ -`dropout` La tasa de Dropout es un hiperparámetro que controla la proporción de unidades (neuronas) en una capa que se "apagan" o se excluyen aleatoriamente durante cada paso de entrenamiento. Esto significa que, durante el entrenamiento, un porcentaje de las conexiones en la red se desactivan temporalmente, lo que ayuda a prevenir el sobreajuste y mejora la generalización del modelo.
+
+ - `lambda`  El parámetro lambda se asocia con la regularización L2. La regularización L2 agrega un término a la función de pérdida del modelo que penaliza los pesos de las conexiones, evitando que tomen valores extremadamente grandes. Esto ayuda a prevenir el sobreajuste y a mejorar la robustez del modelo.
+
+La prinicpal diferencia radica en:
+
+Dropout está relacionado con la exclusión aleatoria de unidades durante el entrenamiento para evitar el sobreajuste. Es una técnica de regularización específica para las capas ocultas de la red.
+
+Lambda en este contexto se asocia con la regularización L2, que penaliza los pesos de las conexiones. Es una técnica de regularización que afecta directamente a los parámetros del modelo.
+
+Nosotras vamos a realizar experimentos para ambos para ver si resulta significativo utilizar Dropout o Decay
 
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+```{r}
+set.seed(124)
+
+inTraining <- createDataPartition(spotiNormalizado$popularity, times=1,p = .80, list = FALSE)
+training <- spotiNormalizado[ inTraining,]
+testing  <- spotiNormalizado[-inTraining,]
+
+training2 <- spotifyNormNoMovements[ inTraining,]
+testing2 <- spotifyNormNoMovements [-inTraining,]
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  dropout =c(0.1,0.3),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Definir el control del modelo
+fitControl <- trainControl(
+  method = "cv",  # Cross-validation
+  number = 10,     # Número de folds
+)
+```
+
+
+
+```{r}
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNorm1Dropout.rds")
+
+# Realizar predicciones
+#predicciones <- predict(modelo, newdata = testing)
+#mae <- mae(predicciones, testing$popularity)
+#rmse <- rmse(predicciones, testing$popularity)
+
+```
+
+```{r}
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  lambda =c(0.001,0.003),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho =0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
+
+# Realizar predicciones
+#predicciones <- predict(modelo, newdata = testing)
+#mae <- mae(predicciones, testing$popularity)
+#rmse <- rmse(predicciones, testing$popularity)
+```
+
+```{r}
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  dropout =c(0.1,0.3),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho =0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNormNoMovDropout.rds")
+```
+
+
+```{r}
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  lambda =c(0.001,0.003),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho =0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNormNoMovDecay.rds")
+```
+
+
+
+
+## Normalizado z-score
+
+```{r}
+set.seed(125)
+spotiNormalizado = spotiNormalizadoZScore
+spotifyNormNoMovements = spotifyNormNoMovementsZScore
+
+inTraining <- createDataPartition(spotiNormalizado$popularity, times=1,p = .80, list = FALSE)
+training <- spotiNormalizado[ inTraining,]
+testing  <- spotiNormalizado[-inTraining,]
+
+training2 <- spotifyNormNoMovements[ inTraining,]
+testing2 <- spotifyNormNoMovements [-inTraining,]
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  dropout =c(0.1,0.3),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Definir el control del modelo
+fitControl <- trainControl(
+  method = "cv",  # Cross-validation
+  number = 10,     # Número de folds
+)
+```
+
+
+
+```{r}
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNorm2Dropout.rds")
+
+# Realizar predicciones
+#predicciones <- predict(modelo, newdata = testing)
+#mae <- mae(predicciones, testing$popularity)
+#rmse <- rmse(predicciones, testing$popularity)
+
+```
+
+```{r}
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  lambda =c(0.001,0.003),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho =0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNorm2Decay.rds")
+
+# Realizar predicciones
+#predicciones <- predict(modelo, newdata = testing)
+#mae <- mae(predicciones, testing$popularity)
+#rmse <- rmse(predicciones, testing$popularity)
+```
+
+```{r}
+
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  dropout =c(0.1,0.3),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho =0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNormNoMov2Dropout.rds")
+```
+
+
+```{r}
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  lambda =c(0.001,0.003),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = paramgrid2,
+  epochs = 25
+)
+
+# Ver los resultados
+
+saveRDS(object = modelo, file = "mlpNormNoMov2Decay.rds")
+```
 
 ### Resultados
 **Describir los resultados del algoritmo.**
