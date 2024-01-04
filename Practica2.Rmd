@@ -28,9 +28,6 @@ library(plotly)
 library(mlbench)
 library(rpart.plot)
 library(Metrics)
-library(keras)
-library(tensorflow)
-detach("package:keras")
 ```
 
 ```{r setup, include=FALSE}
@@ -1197,9 +1194,9 @@ fitControl <- trainControl(
 )
 ```
 
+Este entrenamiento se ha hecho con 32 combinaciones distintas para el grid y ha conllevado una duración superior a 12 horas, por lo que para los siguientes modelos entrenados con `mlpKerasDropout`se va a mirar cuales han sido las mejores 5 combinaciones de los grids y se van a entrenar de esa manera.
 
-
-```{r}
+```{r, eval=FALSE}
 
 # Entrenar el modelo utilizando train()
 modelo <- train(
@@ -1223,6 +1220,34 @@ saveRDS(object = modelo, file = "mlpNorm1Dropout.rds")
 ```
 
 ```{r}
+mlp1 = readRDS("mlpNorm1Dropout.rds")
+mlp1
+```
+Vemos que las 5 mejores combinaciones tienen el mismo `size`, que es 40, el mismo `dropout`, que es 0.1, y para el `batch_size` hay 4 combinaciones con 15, y 1 con 20. El `lr` oscila tambien entre 0.01 y 0.02, y el decay entre 1e-5 y 1e-6 
+
+```{r}
+predicciones <- predict(mlp1, newdata = testing)
+mae <- mae(predicciones, testing$popularity)
+rmse <- rmse(predicciones, testing$popularity)
+mae;rmse
+```
+Debido al gran tiempo de ejecución que nos ha consumido esta red neuronal vamos a resumir el grid como hemos dicho anteriormente para el entrenamiento posterior de modelos que utlicen Dropout. La creación del nuevo grid es la siguiente:
+
+```{r}
+gridDropOut <- expand.grid(
+  size = 40, 
+  dropout =0.1,
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+```
+Este grid solo tiene 8 combinaciones distintas.
+
+
+```{r, eval=FALSE}
 
 paramgrid2 <- expand.grid(
   size = c(40,50), 
@@ -1255,23 +1280,12 @@ saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
 ```
 
 ```{r}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
 modelo <- train(
   popularity ~ ., 
   data = training2,
   method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
   trControl = fitControl,
-  tuneGrid = paramgrid2,
+  tuneGrid = gridDropOut,
   epochs = 25
 )
 
@@ -1281,7 +1295,7 @@ saveRDS(object = modelo, file = "mlpNormNoMovDropout.rds")
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 paramgrid2 <- expand.grid(
   size = c(40,50), 
   lambda =c(0.001,0.003),
@@ -1324,15 +1338,6 @@ testing  <- spotiNormalizado[-inTraining,]
 training2 <- spotifyNormNoMovements[ inTraining,]
 testing2 <- spotifyNormNoMovements [-inTraining,]
 
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho = 0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
 
 # Definir el control del modelo
 fitControl <- trainControl(
@@ -1344,14 +1349,13 @@ fitControl <- trainControl(
 
 
 ```{r}
-
 # Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
   data = training,
   method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
   trControl = fitControl,
-  tuneGrid = paramgrid2,
+  tuneGrid = gridDropOut,
   epochs = 25
 )
 
@@ -1366,7 +1370,7 @@ saveRDS(object = modelo, file = "mlpNorm2Dropout.rds")
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 
 paramgrid2 <- expand.grid(
   size = c(40,50), 
@@ -1399,23 +1403,12 @@ saveRDS(object = modelo, file = "mlpNorm2Decay.rds")
 ```
 
 ```{r}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
 modelo <- train(
   popularity ~ ., 
   data = training2,
   method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
   trControl = fitControl,
-  tuneGrid = paramgrid2,
+  tuneGrid = gridDropOut,
   epochs = 25
 )
 
@@ -1425,7 +1418,7 @@ saveRDS(object = modelo, file = "mlpNormNoMov2Dropout.rds")
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 paramgrid2 <- expand.grid(
   size = c(40,50), 
   lambda =c(0.001,0.003),
