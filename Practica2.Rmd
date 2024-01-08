@@ -1689,7 +1689,7 @@ spotiKNN.modelo.knnReg
 saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 ```
 
-```{r knnReg3, eval=FALSE}
+```{r knnReg3, eval=TRUE}
 knnReg_model = readRDS("knn/knnReg.rds")
 knnReg_model
 
@@ -1739,7 +1739,7 @@ spotiKNN.modelo.knnRegNoMov
 saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
 
-```{r knnRegNoMov3, eval=FALSE}
+```{r knnRegNoMov3, eval=TRUE}
 set.seed(123)
 knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
 knnRegNoMov_model
@@ -1788,7 +1788,7 @@ spotiKNN.modelo.knnCla <- train(popularity_group ~ .,
 saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
 ```
 
-```{r knnCla3, eval=FALSE}
+```{r knnCla3, eval=TRUE}
 knnCla_model = readRDS("knn/knnCla.rds")
 knnCla_model
 
@@ -1885,7 +1885,7 @@ spotiKNN.modelo.knnRegZ
 saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```
 
-```{r knnRegZ3, eval =FALSE }
+```{r knnRegZ3, eval =TRUE }
 knnRegZ_model = readRDS("knn/knnRegZ.rds")
 
 predicciones <- predict(knnRegZ_model, newdata = spotiKNN.Datos.Prueba)
@@ -1933,7 +1933,7 @@ spotiKNN.modelo.knnRegNoMovZ
 saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMovZ.rds")
 ```
 
-```{r knnRegNoMovZ3, eval =FALSE}
+```{r knnRegNoMovZ3, eval =TRUE}
 knnRegNoMovZ_model = readRDS("knn/knnRegNoMovZ.rds")
 knnRegNoMovZ_model
 
@@ -1982,7 +1982,7 @@ spotiKNN.modelo.knnClaZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 ```
-```{r knnClaZ3, eval =FALSE}
+```{r knnClaZ3, eval =TRUE}
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
 knnClaZ_model
 
@@ -2031,7 +2031,7 @@ spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ .,
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
 ```
 
-```{r knnClaNoMovZ3, eval =FALSE}
+```{r knnClaNoMovZ3, eval =TRUE}
 knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
 knnClaNoMovZ_model
 
@@ -2049,7 +2049,7 @@ El modelo de clasificación presenta una precisión global del **91.09%**, demos
 
 Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
 
-```{r comparation, eval=FALSE}
+```{r comparation, eval=TRUE}
 comparacion <- data.frame(
   Modelo = c("KnnReg", "KnnRegNoMov", "KnnRegZ", "KnnRegNoMovZ"),
   MAE = c(maeKnnReg, maeKnnRegNoMov, maeKnnRegZ, maeKnnRegNoMovZ),
@@ -2073,7 +2073,7 @@ Por lo que el mejor modelo es KnnRegZ, normalizado con z-score y con las variabl
 # Apartado D
 ## Modelo Final
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 set.seed(1212)
 
 # Modelos preentrenados
