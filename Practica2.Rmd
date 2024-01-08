@@ -28,6 +28,11 @@ library(plotly)
 library(mlbench)
 library(rpart.plot)
 library(Metrics)
+library(keras)
+library(tensorflow)
+detach("package:keras")
+detach("package:tensorflow")
+search()
 ```
 
 ```{r setup, include=FALSE}
@@ -79,17 +84,19 @@ barplot(table(categories), main = "Recuento de Canciones por Intervalo de Popula
 
 ```
 
-Viendo este gráfico se nos ocurre para hacer nuestro pequeño análisis 3 grupos principales.
+Viendo este gráfico se nos ocurre para hacer nuestro pequeño análisis 4 grupos principales.
 
-  - **Muy poco populares**, cuyo rango será de 0 a 40, de las canciones existentes hay muy pocas canciones poco populares.
+  - **Nada populares**, cuyo rango será de 0 a 30, este será el menor grupo ya que como se observa en la gráfica no hay prácticamente canciones que hayan sido tan poco populares.
   
-  - **Populares**, cuyo rango de popularidad será de 40 a 80, este rango abarca canciones que han sido conocidas.
+  - **Poco populares**, cuyo rango de popularidad será de 30 a 60, este rango abarca canciones que han sido conocidas pero tampoco mucho.
   
-  - **Muy populares**, cuyo rango de popularidad sera de 80 a 100, las canciones más populares y conocidas.
+  - **Algo populares**, cuyo rango de popularidad sera de 60 a 90, son canciones que sí han sido populares.
+  
+  - **Hit**, son las canciones que su popularidad está entre 90 y 100, es decir, que han sido las más populares y muchísima gente las conoce.
   
 Después de haber hecho esta división vamos a seguir haciendo este análisis sin tener en cuenta los países, sino la popularidad "mundial" tras haber hecho la media para no ver en el análisis tantos valores donde la mayoría van a ser repetidos. Para ello ahora vamos a empezar visualizando las variables categóricas que pueden tener algo de relación con `popularity`.
 
-Vamos a utilizar analysis_data, donde en principio no vamos a tener en cuenta el país:
+Vamos a utilizar `analysis_data`, donde en principio no vamos a tener en cuenta el país:
 ```{r}
 #primero convertimos las fechas
 spotify1$snapshot_date = as.Date(spotify1$snapshot_date)
@@ -104,8 +111,8 @@ analysis_data2 <- aggregate(cbind(snapshot_date) ~  name + artists + album_name 
 
 analysis_data$snapshot_date = analysis_data2$snapshot_date
 
-analysis_data$popularity_group <- cut(analysis_data$popularity, breaks = c(0, 40, 80, 100), labels = c("Poco Conocida", "Popular", "Muy Popular"),include.lowest = TRUE)
-analysis_data$popularity_group <- factor(analysis_data$popularity_group, levels = c("Poco Conocida", "Popular", "Muy Popular"))
+analysis_data$popularity_group <- cut(analysis_data$popularity, breaks = c(0, 30, 60, 90, 101), labels = c("Nada popular", "Poco popular", "Algo popular", "Hit"),include.lowest = TRUE)
+analysis_data$popularity_group <- factor(analysis_data$popularity_group, levels = c("Nada popular", "Poco popular", "Algo popular", "Hit"))
 
 
 ```
@@ -144,8 +151,7 @@ myplot
 table(analysis_data$popularity_group, analysis_data$mode)
 ```
 
-También vemos que aquí hay diferencia de canciones, hay aproximadamente 70 canciones más que son muy populares debido al modo en el que están compuestas. Por otro lado, hay casi 200 canciones más que son populares compuestas en el modo 0. Sin embargo, hay más canciones en el modo 1 que tienen cierta popularidad que en el modo 0.
-Por lo que esta variable también puede estar relacionada.
+En esta gráfica no destaca mucho la diferencia de datos entre los modos aunque para los grupos da canciones nada populares, algo populares y hit hay más cantidad en modo 1 por lo que tal vez hay cierta relación pero no lo tenemos del todo claro.
 
 
 - `is_explicit`
@@ -291,7 +297,7 @@ myplot = ggplot(data=mymelt, aes(x=FeatureValue, fill=popularity_group, color = 
   facet_wrap(~ Feature, ncol=3, scales = "free")
 myplot
 ```
-Nos sorprende ver que todas estas variables parecen tener una gran correlación con la variable de clase. Ya que podemos verlas todas superpuestas. Sin embargo, vemos que hay valores muy dispersos y nos gustaría trabajar con ellos, quizá, en la misma escala; es por esto que más adelante seguramente se normalicen estos valores.
+Nos sorprende ver que todas estas variables parecen tener una gran correlación con la variable de clase. Ya que podemos verlas todas superpuestas. Sin embargo, vemos que hay valores, en general, muy dispersos y nos gustaría trabajar con ellos, quizá, en la misma escala; es por esto que más adelante seguramente se normalicen estos valores.
 
 Creemos que además de con la popularidad, estas variables van a estar bastante correlacionadas entre sí.
 
@@ -947,10 +953,10 @@ saveRDS(object= rf_500t, file = "numTrees500.rds")
 ```
 
 ```{r, eval=FALSE}
-rf_200t = readRDS("numTrees200.rds")
-rf_300t = readRDS("numTrees300.rds")
-rf_400t = readRDS("numTrees400.rds")
-rf_500t = readRDS("numTrees500.rds")
+rf_200t = readRDS("rf/numTrees200.rds")
+rf_300t = readRDS("rf/numTrees300.rds")
+rf_400t = readRDS("rf/numTrees400.rds")
+rf_500t = readRDS("rf/numTrees500.rds")
 
 resultados <- data.frame(
   "NumArboles" = c("200", "300", "400", "500"),
@@ -1013,10 +1019,8 @@ saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
 ```
 
 ```{r}
-rfNoMov = readRDS("spotifyNoMovements.rds")
+rfNoMov = readRDS("rf/spotifyNoMovements.rds")
 ```
-
-
 
 ```{r}
 predicciones <- predict(rfNoMov, newdata = testing)
@@ -1103,6 +1107,7 @@ savePointNorm = spotiNormalizado
 ```
 
 
+```{r, eval=FALSE}
 
 key_values <- c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
 
@@ -1152,6 +1157,7 @@ spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNorm
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 Se consideran para la resolución del modelo `mlpKerasDropout` y `mlpKerasDecay`, creemos que los modelos de los costes no son los más acertados, debido a que no nos interesa tener como hiperparametro costes para el modelo que estamos resolviendo
+```{r, eval=FALSE}
 mlpDropoutInfo = getModelInfo("mlpKerasDropout")
 
 mlpDecayInfo = getModelInfo("mlpKerasDecay")
@@ -1184,6 +1190,7 @@ Nosotras vamos a realizar experimentos para ambos para ver si resulta significat
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
+```{r, eval=FALSE}
 set.seed(124)
 
 inTraining <- createDataPartition(spotiNormalizado$popularity, times=1,p = .80, list = FALSE)
@@ -1235,7 +1242,8 @@ saveRDS(object = modelo, file = "mlpNorm1Dropout.rds")
 
 ```
 
-mlp1 = readRDS("mlpNorm1Dropout.rds")
+```{r}
+mlp1 = readRDS("mlpDropout/Regresion/mlpNorm1Dropout.rds")
 mlp1
 ```
 Vemos que las 5 mejores combinaciones tienen el mismo `size`, que es 40, el mismo `dropout`, que es 0.1, y para el `batch_size` hay 4 combinaciones con 15, y 1 con 20. El `lr` oscila tambien entre 0.01 y 0.02, y el decay entre 1e-5 y 1e-6 
@@ -1259,6 +1267,7 @@ gridDropOut <- expand.grid(
   activation = 'tanh'
 )
 ```
+
 Este grid solo tiene 8 combinaciones distintas.
 
 
@@ -1294,6 +1303,10 @@ saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
 #rmse <- rmse(predicciones, testing$popularity)
 ```
 
+```{r}
+mlpNorm1Decay_model = readRDS("mlpDecay/Regresion/mlpNorm1Decay.rds")
+```
+
 
 ```{r, eval=FALSE}
 
@@ -1320,6 +1333,11 @@ modelo <- train(
 
 saveRDS(object = modelo, file = "mlpNormNoMovDropout.rds")
 ```
+
+```{r}
+mlpNormNoMovDropout_model = readRDS("mlpDropout/Regresion/mlpNormNoMovDropout.rds")
+```
+
 
 
 ```{r, eval=FALSE}
@@ -1348,11 +1366,15 @@ modelo <- train(
 saveRDS(object = modelo, file = "mlpNormNoMovDecay.rds")
 ```
 
+```{r}
+mlpNormNoMovDecay_model = readRDS("mlpDecay/Regresion/mlpNormNoMovDecay.rds")
+```
 
 
 
 #### Normalizado z-score
 
+```{r, eval=FALSE}
 set.seed(125)
 spotiNormalizado = spotiNormalizadoZScore
 spotifyNormNoMovements = spotifyNormNoMovementsZScore
@@ -1374,6 +1396,8 @@ fitControl <- trainControl(
 
 
 
+```{r, eval=FALSE}
+
 # Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
@@ -1393,6 +1417,10 @@ saveRDS(object = modelo, file = "mlpNorm2Dropout.rds")
 #mae <- mae(predicciones, testing$popularity)
 #rmse <- rmse(predicciones, testing$popularity)
 
+```
+
+```{r}
+mlpNorm2Dropout_model = readRDS("mlpDropout/Regresion/mlpNorm2Dropout.rds")
 ```
 
 ```{r, eval=FALSE}
@@ -1427,6 +1455,11 @@ saveRDS(object = modelo, file = "mlpNorm2Decay.rds")
 #rmse <- rmse(predicciones, testing$popularity)
 ```
 
+```{r}
+mlpNorm2Decay_model = readRDS("mlpDecay/Regresion/mlpNorm2Decay.rds")
+```
+
+```{r, eval=FALSE}
 
 paramgrid2 <- expand.grid(
   size = c(40,50), 
@@ -1452,6 +1485,9 @@ modelo <- train(
 saveRDS(object = modelo, file = "mlpNormNoMov2Dropout.rds")
 ```
 
+```{r}
+mlpNormNoMov2Dropout_model = readRDS("mlpDropout/Regresion/mlpNormNoMov2Dropout.rds")
+```
 
 ```{r, eval=FALSE}
 paramgrid2 <- expand.grid(
@@ -1477,6 +1513,11 @@ modelo <- train(
 # Ver los resultados
 
 saveRDS(object = modelo, file = "mlpNormNoMov2Decay.rds")
+```
+
+
+```{r}
+mlpNormNoMov2Decay_model = readRDS("mlpDecay/Regresion/mlpNormNoMov2Decay.rds")
 ```
 
 ### Resultados
@@ -1507,6 +1548,10 @@ Los requisitos para el clustering, especialmente para k-means, incluyen:
 - Escalado de variables: Dado que el algoritmo de k-means se basa en distancias euclidianas, es importante escalar las variables para que tengan la misma influencia en el cálculo de las distancias. Esto ya lo hemos contemplado en la preparación de los datos.
 
 - Manejo de valores nulos: Los valores nulos pueden afectar la calidad del clustering, por lo que es importante tratarlos antes del entrenamiento, lo cual hemos ya.
+
+
+
+
 
 
 ### Descripción de hiperparámetros
@@ -1556,7 +1601,7 @@ saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 
 
 ```{r, eval=FALSE}
-knnReg_model = readRDS("knnReg.rds")
+knnReg_model = readRDS("knn/knnReg.rds")
 knnReg_model
 
 predicciones <- predict(knnReg_model, newdata = spotiKNN.Datos.Prueba)
@@ -1599,8 +1644,14 @@ spotiKNN.modelo.knnRegNoMov <- train(popularity ~ .,
                              trControl = fitControl, 
                              tuneGrid = mygrid)
 spotiKNN.modelo.knnRegNoMov
-saveRDS(spotiKNN.modelo.knnRegNoMov, "knnRegNoMov.rds")
+saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
+
+```{r}
+knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
+
+```
+
 
 #### Normalizado z-score
 Por otra parte, vamos a ver qué tal serían los resultados para el normalizado z-score. Primero sin quitar las 3 columnas de antes.
@@ -1639,6 +1690,11 @@ spotiKNN.modelo.knnRegZ
 saveRDS(spotiKNN.modelo.knnRegZ, "knnRegNoMov.rds")
 ```
 
+```{r}
+knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
+```
+
+
 Y ahora para el dataset sin las 3 columnas y con z-score.
 ```{r, eval=FALSE}
 set.seed(123)
@@ -1672,6 +1728,10 @@ spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ .,
                              tuneGrid = mygrid)
 spotiKNN.modelo.knnRegNoMovZ
 saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMov.rds")
+```
+
+```{r}
+knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
 ```
 
 
@@ -1716,7 +1776,7 @@ saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
 
 
 ```{r}
-knnCla_model = readRDS("knnCla.rds")
+knnCla_model = readRDS("knn/knnCla.rds")
 knnCla_model
 
 #predicciones <- predict(knnCla_model, newdata = spotiKNN.Datos.Prueba)
@@ -1761,6 +1821,10 @@ saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
 #print(spotiKNN.modelo.knn)
 ```
 
+```{r}
+knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
+```
+
 ```{r, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizadoZScore
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizadoZScore$popularity, 
@@ -1797,6 +1861,9 @@ saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 #print(spotiKNN.modelo.knn)
 ```
 
+```{r}
+knnClaZ_model = readRDS("knn/knnClaZ.rds")
+```
 
 ```{r, eval=TRUE}
 spotiNormalizadoNoMovZ_CL <- spotifyNormNoMovementsZScore
@@ -1833,8 +1900,16 @@ spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ .,
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
 #print(spotiKNN.modelo.knn)
 ```
+
+```{r}
+knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
+```
+
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+#### Normalizado z-score
+
 
 ### Resultados
 **Describir los resultados del algoritmo.**
