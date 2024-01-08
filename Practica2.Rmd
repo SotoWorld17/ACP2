@@ -1172,7 +1172,7 @@ spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNorm
 
 ```
 
-```{r, include = false}
+```{r, include=FALSE}
 spSpotiNormalizado2 = spotiNormalizado
 spSpotifyNormNoMovements2 = spotifyNormNoMovements
 spSpotiNormalizadoZScore2 = spotiNormalizadoZScore
@@ -1596,6 +1596,9 @@ ggplot(datos, aes(x = Predicciones, y = Popularidad)) +
 ```
 
 ## Clustering
+
+En este apartado además se incluyen apartados de clasificación. Se abordará la elección del mejor modelo de clasificación en el ultimo apartado extra que hemos añadido.
+
 ### Funcionamiento
 **Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
 
@@ -1610,6 +1613,11 @@ El algoritmo de clustering se utiliza para agrupar datos similares entre sí en 
 4. **Iteración:** Se repiten los pasos 2 y 3 hasta que los centroides convergen o se alcanza un número máximo de iteraciones.
 
 El resultado es un conjunto de clusters donde los puntos de datos dentro de cada cluster son más similares entre sí que con aquellos en otros clusters.
+
+Como hemos mencionado, uno de sus métodos más conocidos es `knn`. Lo que hace este método es buscar en el conjunto de entrenamiento K muestras que sean las más cercanas en distancia al nuevo punto que se desea clasificar. La distancia puede medirse utilizando diversas métricas, siendo la distancia euclidiana la opción común. Después de identificar estos K vecinos más cercanos, el algoritmo predice la etiqueta del nuevo punto basándose en la mayoría de las etiquetas de estas muestras de entrenamiento cercanas. 
+
+KNN clasifica un nuevo punto según la mayoría de las clases de sus K vecinos más cercanos en el espacio de características.
+
 
 ### Requisitos
 **Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
@@ -2048,7 +2056,34 @@ Por último, el modelo KnnRegNoMovZ es similar al modelo KnnRegNoMov. La versió
 # Apartado D
 ## Modelo Final
 
+```{r}
+{r}
+set.seed(1212)
+
+# Modelos preentrenados
+modelo_rf <- rfNoMov
+modelo_mlp <- mlpNorm1Decay_model
+modelo_knn <- knnRegZ_model
+
+# Recopilar Resamples
+conjunto_resamples <- resamples(list(RandomForest = modelo_rf, 
+                                     MLP = modelo_mlp, 
+                                     KNN = modelo_knn))
+
+# Visualización y Comparación
+trellis.par.set(caretTheme())
+bwplot(conjunto_resamples, layout = c(nrow = 3, ncol = 1))  
+# Ajusta el diseño según la cantidad de modelos y métricas
+
+# Pruebas de Hipótesis
+diferencias <- diff(conjunto_resamples)
+resumen_diferencias <- summary(diferencias)
+```
+
+
 # Apartado Extra
+## KNN
+
 ## Clasificación 
 A continuación no vamos a detallar ni explicar tanto lo que hemos hecho, solo cargaremos algunos modelos de clasificación realizados porque pensamos que esta practica podría tener otra solución : determinar si una canción se vuelve o no un hit. Para ello hemos dividido la popularidad en distintos grupos, a continuación vamos a poner el codigo que hemos utilizado para realizar este apartado y remarcaremos las principales diferencias, junto con una explicación de los resultados.
 
@@ -2190,6 +2225,7 @@ saveRDS(object= spotifyrf, file = "spotifyNoMovementsClasificacion.rds")
 
 ```{r}
 readRDS("spotifyNoMovementsClasificacion.rds")
+spotifyNoMovementsClasificacion = readRDS("rf/Clasificacion/spotifyNoMovementsClasificacion.rds")
 spotifyNoMovementsClasificacion = calcular_metricas(spotifyNoMovementsClasificacion)
 ```
 
@@ -2202,6 +2238,7 @@ cmknnCla$overall
 
 
 
+Esta precisión, aunque tambien es alta, no es tan alta como la de `rf_500tm`.  
 ```{r}
 spotifyNoMovementsClasificacion
 ```
@@ -2461,3 +2498,4 @@ Esta tambien nos da unos resultados relativamente altos aunque no tanto como los
 # Eleccion de Modelo
 
 Al contrario que anteriormente no vamos a plotear la diferencia en nuestros modelos de precisión. Solo vamos a mencionar cual escogemos: va a ser el modelo de RandomForest debido a su gran precisión a la hora de clasificar los datos frente a las redes neuronales, quizás con un grid más grande para redes neuronales habriamos conseguido mejores resultados.
+
