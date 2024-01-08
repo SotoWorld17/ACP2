@@ -1753,7 +1753,6 @@ spotiKNN.modelo.knnCla <- train(popularity_group ~ .,
                              tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
-#print(spotiKNN.modelo.knn)
 ```
 ```{r knnCla}
 knnCla_model = readRDS("knn/knnCla.rds")
@@ -1806,8 +1805,8 @@ knnClaNoMov_model
 
 predicciones <- predict(knnClaNoMov_model, newdata = spotiKNN.Datos.Prueba)
 # Calcular matriz de confusión
-cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
-cm
+cmknnClaNoMov <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
+cmknnClaNoMov
 ```
 #### Normalizado z-score
 
@@ -1851,14 +1850,14 @@ knnRegNoMov_model = readRDS("knn/knnRegZ.rds")
 knnRegNoMov_model
 
 predicciones <- predict(knnRegNoMov_model, newdata = spotiKNN.Datos.Prueba)
-maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
-rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
+maeKnnRegZ <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnnRegZ <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
 
-maeKnn; rmseKnn
+maeKnnRegZ; rmseKnnRegZ
 ```
 
 Y ahora para el dataset sin las 3 columnas y con z-score.
-```{r knnRegNoMovZ, eval=FALSE}
+```{r knnRegNoMovZ, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1881,7 +1880,8 @@ fitControl <- trainControl(## 10-fold CV
                            number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
-
+```
+```{r knnRegNoMovZ, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1896,10 +1896,10 @@ knnRegNoMovZ_model = readRDS("knn/knnRegNoMovZ.rds")
 knnRegNoMovZ_model
 
 predicciones <- predict(knnRegNoMovZ_model, newdata = spotiKNN.Datos.Prueba)
-maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
-rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
+maeKnnRegNoMovZ <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnnRegNoMovZ <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
 
-maeKnn; rmseKnn
+maeKnnRegNoMovZ; rmseKnnRegNoMovZ
 ```
 
 
@@ -1945,8 +1945,8 @@ knnClaZ_model
 
 predicciones <- predict(knnClaZ_model, newdata = spotiKNN.Datos.Prueba)
 # Calcular matriz de confusión
-cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
-cm
+cmknnClaZ <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity_group)
+cmknnClaZ
 ```
 
 ```{r knnClaNoMovZ, eval=TRUE}
@@ -1989,11 +1989,29 @@ knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
 knnClaNoMovZ_model
 
 predicciones <- predict(knnClaNoMovZ_model, newdata = spotiKNN.Datos.Prueba)
-maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
-rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
-
-maeKnn; rmseKnn
+# Calcular matriz de confusión
+cmknnClaNoMovZ <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity_group)
+cmknnClaNoMovZ
 ```
+
+
+Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
+```{r}
+comparacion <- data.frame(
+  Modelo = c("KnnReg", "KnnRegNoMov", "KnnRegZ", "KnnRegNoMovZ"),
+  MAE = c(maeKnnReg, maeKnnRegNoMov, maeKnnRegZ, maeKnnRegNoMovZ),
+  RMSE = c(rmseKnnReg, rmseKnnRegNoMov, rmseKnnRegZ, rmseKnnRegNoMovZ)
+)
+comparacion
+```
+
+El modelo KnnReg parece tener un buen rendimiento en términos de error absoluto medio (MAE) y raíz del error cuadrático medio (RMSE). Un MAE de 2.99 sugiere que, en promedio, las predicciones están desviadas por aproximadamente 2.99 unidades de la variable objetivo (popularidad). El RMSE de 8.06 indica la dispersión de los errores, siendo más sensible a los errores grandes.
+
+El KnnRegNoMov, que excluye las variables `daily_movement`, `daily_rank` y `weekly_movement`, muestra un ligero aumento en ambos MAE y RMSE en comparación con el modelo anterior. Esto podría indicar que esas variables pueden contener información útil para las predicciones.
+
+Por otra parte, KnnRegZ es un modelo normalizado z-score que parece tener un rendimiento similar al modelo original por lo que tal vez esta normalización es mejor para el modelo.
+
+Por último, el modelo KnnRegNoMovZ es similar al modelo KnnRegNoMov. La versión normalizada muestra un aumento en MAE y RMSE en comparación con su contraparte con las variables. Esto respalda la idea de que las variables pueden ser cruciales.
 
 ### Resultados
 **Describir los resultados del algoritmo.**
