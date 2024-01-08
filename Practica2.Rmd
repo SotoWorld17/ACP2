@@ -1824,6 +1824,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovCL[[spotiKNN.Var.
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovCL[-spotiKNN.Particion, ]
 ```
+
 ```{r knnClaNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ ., 
@@ -1834,6 +1835,7 @@ spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
 ```
+
 ```{r knnClaNoMov3}
 knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
 knnClaNoMov_model
@@ -1873,6 +1875,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
 
 ```{r knnRegZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
@@ -1982,6 +1985,7 @@ spotiKNN.modelo.knnClaZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 ```
+
 ```{r knnClaZ3, eval =TRUE}
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
 knnClaZ_model
@@ -2250,21 +2254,11 @@ saveRDS(object= spotifyrf, file = "spotifyNoMovementsClasificacion.rds")
 ```
 
 ```{r}
-readRDS("spotifyNoMovementsClasificacion.rds")
 spotifyNoMovementsClasificacion = readRDS("rf/Clasificacion/spotifyNoMovementsClasificacion.rds")
 spotifyNoMovementsClasificacion = calcular_metricas(spotifyNoMovementsClasificacion)
 ```
 
-Por otra parte, el mejor modelo de clasificación en clustering es el modelo `knnCla_model` que tiene una precisión global del 92.24. En el que el hiperparámetro k toma el valor 10.
 
-```{r}
-knnCla_model$bestTune
-cmknnCla$overall
-```
-
-
-
-Esta precisión, aunque tambien es alta, no es tan alta como la de `rf_500tm`.  
 ```{r}
 spotifyNoMovementsClasificacion
 ```
@@ -2524,7 +2518,16 @@ Esta tambien nos da unos resultados relativamente altos aunque no tanto como los
 
 
 ## knn
-Para knn el resultado que mejor clasificaba es `cmknnClaZ`. Esto ha sido calculado en el apartado de Clustering.
+Por otra parte, el mejor modelo de clasificación en clustering es el modelo `knnCla_model` que tiene una precisión global del 92.24. En el que el hiperparámetro k toma el valor 10.
+
+```{r}
+knnCla_model$bestTune
+cmknnCla$overall
+```
+
+
+
+Esta precisión, aunque tambien es alta, no es tan alta como la de `rf_500tm`.  
 
 # Eleccion de Modelo
 
@@ -2534,7 +2537,7 @@ Al contrario que anteriormente no vamos a plotear la diferencia en nuestros mode
 # Modelos preentrenados
 modelo_rf <- rf_500t
 modelo_mlp <- mlpfinal
-modelo_knn <- knnClaZ_model
+modelo_knn <- knnCla_model
 
 # Recopilar Resamples
 conjunto_resamples <- resamples(list(RandomForest = modelo_rf, 
