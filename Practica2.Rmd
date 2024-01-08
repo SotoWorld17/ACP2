@@ -905,12 +905,6 @@ set.seed(44)
 #tamanio_muestra <- round(nrow(spotify) * porcentaje_datos)
 #spotify = spotify[sample(nrow(spotify), tamanio_muestra), ]
 
-#set.seed(126)
-#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
-#training <- spotify[ inTraining,]
-#testing  <- spotify[-inTraining,]
-
-
 
 rf_200t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
@@ -922,12 +916,6 @@ saveRDS(object= rf_200t, file = "numTrees200.rds")
 ```
 
 ```{r rf300trees, eval= FALSE}
-#set.seed(126)
-#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
-#training <- spotify[ inTraining,]
-#testing  <- spotify[-inTraining,]
-
-
 rf_300t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -938,11 +926,6 @@ saveRDS(object= rf_300t, file = "numTrees300.rds")
 ```
 
 ```{r rf400trees, eval = FALSE}
-#set.seed(126)
-#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
-#training <- spotify[ inTraining,]
-#testing  <- spotify[-inTraining,]
-
 rf_400t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -953,12 +936,6 @@ saveRDS(object= rf_400t, file = "numTrees400.rds")
 ```
 
 ```{r rf500trees, eval = FALSE}
-#set.seed(126)
-#inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
-#training <- spotify[ inTraining,]
-#testing  <- spotify[-inTraining,]
-
-
 rf_500t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -968,7 +945,7 @@ rf_500t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_500t, file = "numTrees500.rds")
 ```
 
-```{r,eval=FALSE}
+```{r}
 rf_200t = readRDS("rf/numTrees200.rds")
 rf_300t = readRDS("rf/numTrees300.rds")
 rf_400t = readRDS("rf/numTrees400.rds")
@@ -985,7 +962,7 @@ resultados
 
 Podemos para todas las opciones de número de árboles que hemos contemplado obtenemos la misma configuración.
 
-```{r,eval=FALSE}
+```{r, eval =FALSE}
 # Función para calcular MAE y RMSE
 calcular_metricas <- function(modelo) {
   predicciones <- predict(modelo, newdata = testing)
@@ -1007,10 +984,12 @@ comparacion
 
 Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 300 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement`.
 
-```{r, eval=FALSE}
-#spotify = spotifyNoMovements
-inTraining <- createDataPartition(spotifyNoMovements$popularity, times=1,p = .80, list = FALSE)
+```{r}
 training <- spotifyNoMovements[ inTraining,]
+testing <- spotifyNoMovements[ -inTraining,]
+```
+
+```{r, eval=FALSE}
 fitControl <- trainControl(## 10-fold CV
                            method = "cv",
                            number = 10)
@@ -1034,11 +1013,11 @@ spotifyrf <-train (popularity ~ ., data = training,
 saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
 ```
 
-```{r, eval=FALSE}
+```{r }
 rfNoMov = readRDS("rf/spotifyNoMovements.rds")
 ```
 
-```{r, eval=FALSE}
+```{r}
 predicciones <- predict(rfNoMov, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
@@ -1072,7 +1051,7 @@ El modelo se entrenó con *300 árboles*, y los resultados fueron los siguientes
 - MAE (Error Absoluto Medio): 0.5488207
 - RMSE (Error Cuadrático Medio): 1.989452
 
-Estos resultados indican que el modelo tiene una capacidad sustancial para hacer predicciones precisas sobre la popularidad de las canciones en función de las variables disponibles. En comparación con los modelos anteriores que incluían las variables excluidas, este modelo reducido logró un rendimiento aún mejor, lo que respalda la decisión de prescindir de esas características específicas en este contexto.
+Estos resultados indican que el modelo tiene capacidad para hacer predicciones precisas sobre la popularidad de las canciones en función de las variables disponibles. En comparación con los modelos anteriores que incluían las variables excluidas, este modelo reducido logró un rendimiento aún mejor, lo que respalda la decisión de prescindir de esas características específicas en este contexto.
 
 ```{r, eval=FALSE}
 rfNoMov
@@ -1116,12 +1095,7 @@ spotiNormalizadoZScore[, restantesNormal] = scale(spotiNormalizadoZScore[, resta
 spotifyNormNoMovementsZScore[, restantesNormal] = scale(spotifyNormNoMovementsZScore[, restantesNormal],center = TRUE, scale = TRUE)
 ```
 A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`. Para ello vamos a utilizar la tecnica one-Hot-Encoding. Que nos permitira representar numéricamente variables categóricas y manejar variables categóricas con múltiples categorías, estas variables no las tendremos que normalizar, ya que hemos generado una columna nueva para cada posible valor de las columnas `key`, `mode`y `time_signature`, poniendo como valor 1 si coincide el valor original con el nombre de la columna.
-
-```{r}
-savePointNNM = spotifyNormNoMovements
-savePointNorm = spotiNormalizado
-```
-
+`
 
 ```{r}
 
@@ -1173,7 +1147,7 @@ spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNorm
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 Se consideran para la resolución del modelo `mlpKerasDropout` y `mlpKerasDecay`, creemos que los modelos de los costes no son los más acertados, debido a que no nos interesa tener como hiperparametro costes para el modelo que estamos resolviendo
-```{r, eval=FALSE}
+```{r}
 mlpDropoutInfo = getModelInfo("mlpKerasDropout")
 
 mlpDecayInfo = getModelInfo("mlpKerasDecay")
@@ -1206,6 +1180,31 @@ Nosotras vamos a realizar experimentos para ambos para ver si resulta significat
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
+#### Dropout
+
+Después de haber visto los parámetros en el apartado anterior vamos a generar una estrategia para el grid.
+
+```{r}
+paramgrid2 <- expand.grid(
+  size = c(40,50), 
+  dropout =c(0.1,0.3),
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh')
+```
+La mayoría de ellas se han hecho a través de prueba y error. Hay otras de las que no eramos muy conscientes de su existencia, por ejemplo, investigamos que `rho` era un buen valor entre 0.9-0.96. Nosotras hemos usado 0.91 porque era el valor que mejor nos funcionaba con el 30% de los datos. 
+
+Por otro lado hemos escogido `tanh` como la función de activación debido a la existencia de valores negativos y positivos en nuestros datos.
+
+`dropout` va a tomar los valores 0.1 y 0.3 debido a que queremos conocer si repercute la regularidad que le metamos a nuestros datos y hemos leido que son valores normales.
+
+-`lr`, sabemos que lr más bajos puedes ser más lentos y aprender (o incluso sobreaprender más) y que lr más altos pueden lidiar a no aprender del todo bien. Creemos que `0.01`y `0.02` son dos buenas opciones. 
+
+-`decay`: Un parámetro de decaimiento que controla la disminución de la tasa de aprendizaje a lo largo del tiempo. Hemos considerando dos opciones, 1e-6 y 1e-5. 
+
+-Para `size` y `batch size` tambien han sido escogidos a traves de pruebas y errores individuales. Leimos que era buena opción para `size` utilizar el doble de variables, nosotras lo hemos hecho de forma aproximada, ya que 40 y 50 nos devolvian mejores resultados que 60. 
 ```{r}
 set.seed(124)
 
@@ -1216,60 +1215,40 @@ testing  <- spotiNormalizado[-inTraining,]
 training2 <- spotifyNormNoMovements[ inTraining,]
 testing2 <- spotifyNormNoMovements [-inTraining,]
 
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho = 0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
 # Definir el control del modelo
 fitControl <- trainControl(
   method = "cv",  # Cross-validation
   number = 10,     # Número de folds
-)
+  
+) 
+
+sptesting1 = testing
+sptesting2 = testing2
 ```
+
 
 Este entrenamiento se ha hecho con 32 combinaciones distintas para el grid y ha conllevado una duración superior a 12 horas, por lo que para los siguientes modelos entrenados con `mlpKerasDropout`se va a mirar cuales han sido las mejores 5 combinaciones de los grids y se van a entrenar de esa manera.
 
+Modelo que contiene `daily_rank`, `daily_movement`, `weekly_movement`. 
 ```{r, eval=FALSE}
 
-# Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
   data = training,
-  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  method = "mlpKerasDropout", 
   trControl = fitControl,
   tuneGrid = paramgrid2,
   epochs = 25
 )
 
-# Ver los resultados
-
 saveRDS(object = modelo, file = "mlpNorm1Dropout.rds")
-
-# Realizar predicciones
-#predicciones <- predict(modelo, newdata = testing)
-#mae <- mae(predicciones, testing$popularity)
-#rmse <- rmse(predicciones, testing$popularity)
-
 ```
-
+Ahora vamos a ver el modelo obtenido.
 ```{r}
-mlp1 = readRDS("mlpDropout/Regresion/mlpNorm1Dropout.rds")
-mlp1
+mlpNorm1Dropout = readRDS("mlpDropout/Regresion/mlpNorm1Dropout.rds")
+mlpNorm1Dropout
 ```
-Vemos que las 5 mejores combinaciones tienen el mismo `size`, que es 40, el mismo `dropout`, que es 0.1, y para el `batch_size` hay 4 combinaciones con 15, y 1 con 20. El `lr` oscila tambien entre 0.01 y 0.02, y el decay entre 1e-5 y 1e-6 
-
-```{r}
-predicciones <- predict(mlp1, newdata = testing)
-mae <- mae(predicciones, testing$popularity)
-rmse <- rmse(predicciones, testing$popularity)
-mae;rmse
-```
+Vemos que las 5 mejores combinaciones tienen el mismo `size`, que es 40, el mismo `dropout`, que es 0.1, y para el `batch_size` hay 4 combinaciones con 15, y 1 con 20. El `lr` oscila tambien entre 0.01 y 0.02, y el decay entre 1e-5 y 1e-6.
 Debido al gran tiempo de ejecución que nos ha consumido esta red neuronal vamos a resumir el grid como hemos dicho anteriormente para el entrenamiento posterior de modelos que utlicen Dropout. La creación del nuevo grid es la siguiente:
 
 ```{r}
@@ -1283,69 +1262,19 @@ gridDropOut <- expand.grid(
   activation = 'tanh'
 )
 ```
-
 Este grid solo tiene 8 combinaciones distintas.
 
 
+Modelo que no contiene `daily_rank`, `daily_movement`, `weekly_movement`. 
 ```{r, eval=FALSE}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  lambda =c(0.001,0.003),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
-# Entrenar el modelo utilizando train()
-modelo <- train(
-  popularity ~ ., 
-  data = training,
-  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
-  trControl = fitControl,
-  tuneGrid = paramgrid2,
-  epochs = 25
-)
-
-# Ver los resultados
-
-saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
-
-# Realizar predicciones
-#predicciones <- predict(modelo, newdata = testing)
-#mae <- mae(predicciones, testing$popularity)
-#rmse <- rmse(predicciones, testing$popularity)
-```
-
-```{r}
-mlpNorm1Decay_model = readRDS("mlpDecay/Regresion/mlpNorm1Decay.rds")
-```
-
-
-```{r, eval=FALSE}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
 modelo <- train(
   popularity ~ ., 
   data = training2,
-  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  method = "mlpKerasDropout",  
   trControl = fitControl,
   tuneGrid = gridDropOut,
   epochs = 25
 )
-
-# Ver los resultados
 
 saveRDS(object = modelo, file = "mlpNormNoMovDropout.rds")
 ```
@@ -1355,8 +1284,24 @@ mlpNormNoMovDropout_model = readRDS("mlpDropout/Regresion/mlpNormNoMovDropout.rd
 ```
 
 
+```{r}
+calcular_metricas <- function(modelo, test) {
+  predicciones <- predict(modelo, newdata = test)
+  mae <- mae(predicciones, testing$popularity)
+  rmse <- rmse(predicciones, testing$popularity)
+  return(c(MAE = mae, RMSE = rmse))
+}
 
-```{r, eval=FALSE}
+ mlpNorm1Dropout = calcular_metricas(mlpNorm1Dropout, testing)
+ mlpNormNoMovDropout_model = calcular_metricas(mlpNormNoMovDropout_model, testing2)
+ 
+```
+
+
+#### Decay
+A continuación tambien se van a entrenar redes neuronlaes utilizando Decay, para ello vamos a utilizar el mismo grid usado para el primer entrenamiento de la red neuronal (el de 32 combinaciones), pero modificando el parámetro de `dropout` por el de `lambda`, va a tomar los valores 0.001 y 0.003, los demás valores van a ser los mismos vistos anteriormente.
+
+```{r}
 paramgrid2 <- expand.grid(
   size = c(40,50), 
   lambda =c(0.001,0.003),
@@ -1366,18 +1311,49 @@ paramgrid2 <- expand.grid(
   decay = c(1e-6, 1e-5),
   activation = 'tanh'
 )
+```
 
-# Entrenar el modelo utilizando train()
+Entrenamos el modelo con esta combinacion
+```{r, eval=FALSE}
 modelo <- train(
   popularity ~ ., 
-  data = training2,
-  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  data = training,
+  method = "mlpKerasDecay",  
   trControl = fitControl,
   tuneGrid = paramgrid2,
   epochs = 25
 )
 
-# Ver los resultados
+saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
+```
+
+```{r}
+mlpNorm1Decay_model = readRDS("mlpDecay/Regresion/mlpNorm1Decay.rds")
+predicciones1 = mlpNorm1Decay_model
+```
+
+Establecemos el nuevo grid para que las proximas ejecuciones no tarden tanto a uno de 8 combinaciones. Al igual que hicimos anteriormente.
+```{r}
+gridDecay <- expand.grid(
+  size = 40, 
+  lambda =0.001,
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+```
+
+```{r, eval=FALSE}
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
 
 saveRDS(object = modelo, file = "mlpNormNoMovDecay.rds")
 ```
@@ -1386,11 +1362,21 @@ saveRDS(object = modelo, file = "mlpNormNoMovDecay.rds")
 mlpNormNoMovDecay_model = readRDS("mlpDecay/Regresion/mlpNormNoMovDecay.rds")
 ```
 
+```{r}
+ mlpNorm1Decay_model = calcular_metricas(mlpNorm1Decay_model, testing)
+ mlpNormNoMovDecay_model = calcular_metricas(mlpNormNoMovDecay_model, testing2)
+```
 
+```{r}
+spSpotiNormalizado = spotiNormalizado
+spSpotifyNormNoMovements = spotifyNormNoMovements
+```
 
-#### Normalizado z-score
+### Normalizado z-score
+Utilizando el escalado definido anteriormente vamos a repetir los mismos pasos, utilizando los grids de 8 combinaciones.
 
-```{r, eval=FALSE}
+Aqui volvemos a hacer una particion del conjunto.
+```{r}
 set.seed(125)
 spotiNormalizado = spotiNormalizadoZScore
 spotifyNormNoMovements = spotifyNormNoMovementsZScore
@@ -1410,93 +1396,37 @@ fitControl <- trainControl(
 )
 ```
 
+#### DropOut
 
-
+Modelo que contiene `daily_rank`, `daily_movement`, `weekly_movement`.  
 ```{r, eval=FALSE}
-
-# Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
   data = training,
-  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  method = "mlpKerasDropout",  
   trControl = fitControl,
   tuneGrid = gridDropOut,
   epochs = 25
 )
 
-# Ver los resultados
-
 saveRDS(object = modelo, file = "mlpNorm2Dropout.rds")
-
-# Realizar predicciones
-#predicciones <- predict(modelo, newdata = testing)
-#mae <- mae(predicciones, testing$popularity)
-#rmse <- rmse(predicciones, testing$popularity)
-
 ```
 
 ```{r}
 mlpNorm2Dropout_model = readRDS("mlpDropout/Regresion/mlpNorm2Dropout.rds")
 ```
 
+Modelo que no contiene `daily_rank`, `daily_movement`, `weekly_movement`. 
 ```{r, eval=FALSE}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  lambda =c(0.001,0.003),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
-
-# Entrenar el modelo utilizando train()
-modelo <- train(
-  popularity ~ ., 
-  data = training,
-  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
-  trControl = fitControl,
-  tuneGrid = paramgrid2,
-  epochs = 25
-)
-
-# Ver los resultados
-
-saveRDS(object = modelo, file = "mlpNorm2Decay.rds")
-
-# Realizar predicciones
-#predicciones <- predict(modelo, newdata = testing)
-#mae <- mae(predicciones, testing$popularity)
-#rmse <- rmse(predicciones, testing$popularity)
-```
-
-```{r}
-mlpNorm2Decay_model = readRDS("mlpDecay/Regresion/mlpNorm2Decay.rds")
-```
-
-```{r, eval=FALSE}
-
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  dropout =c(0.1,0.3),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho =0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
 
 modelo <- train(
   popularity ~ ., 
   data = training2,
-  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  method = "mlpKerasDropout", 
   trControl = fitControl,
   tuneGrid = gridDropOut,
   epochs = 25
 )
-
-# Ver los resultados
 
 saveRDS(object = modelo, file = "mlpNormNoMov2Dropout.rds")
 ```
@@ -1505,29 +1435,44 @@ saveRDS(object = modelo, file = "mlpNormNoMov2Dropout.rds")
 mlpNormNoMov2Dropout_model = readRDS("mlpDropout/Regresion/mlpNormNoMov2Dropout.rds")
 ```
 
+```{r}
+mlpNorm2Dropout_model = calcular_metricas(mlpNorm2Dropout_model, testing)
+mlpNormNoMov2Dropout_model = calcular_metricas(mlpNormNoMov2Dropout_model, testing2)
+```
+
+
+#### Decay
+Modelo que contiene `daily_rank`, `daily_movement`, `weekly_movement`. 
 ```{r, eval=FALSE}
-paramgrid2 <- expand.grid(
-  size = c(40,50), 
-  lambda =c(0.001,0.003),
-  batch_size = c(15,20),
-  lr = c(0.01,0.02),
-  rho = 0.91,
-  decay = c(1e-6, 1e-5),
-  activation = 'tanh'
-)
 
 # Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
-  data = training2,
-  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  data = training,
+  method = "mlpKerasDecay", 
   trControl = fitControl,
-  tuneGrid = paramgrid2,
+  tuneGrid = gridDecay,
   epochs = 25
 )
 
-# Ver los resultados
+saveRDS(object = modelo, file = "mlpNorm2Decay.rds")
+```
 
+```{r}
+mlpNorm2Decay_model = readRDS("mlpDecay/Regresion/mlpNorm2Decay.rds")
+predicciones2 = mlpNorm2Decay_model
+```
+
+Modelo que no contiene `daily_rank`, `daily_movement`, `weekly_movement`. 
+```{r, eval=FALSE}
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
 saveRDS(object = modelo, file = "mlpNormNoMov2Decay.rds")
 ```
 
@@ -1536,8 +1481,87 @@ saveRDS(object = modelo, file = "mlpNormNoMov2Decay.rds")
 mlpNormNoMov2Decay_model = readRDS("mlpDecay/Regresion/mlpNormNoMov2Decay.rds")
 ```
 
+```{r}
+mlpNorm2Decay_model = calcular_metricas(mlpNorm2Decay_model,testing)
+mlpNormNoMov2Decay_model = calcular_metricas(mlpNormNoMov2Decay_model, testing2)
+```
+
 ### Resultados
 **Describir los resultados del algoritmo.**
+Ya tenemos todos los modelos entrenados, a continuación, lo que vamos a hacer es ver cuales son los resultados obtenidos, y comprobar si dan mejores resultados utilizando Dropout o Decay, y si son los modelos con `"movement"` mejores que los que no lo tienen.
+
+```{r}
+comparacion = data.frame(
+  mlpNorm1Dropout,
+  mlpNormNoMovDropout_model,
+  mlpNorm1Decay_model,
+  mlpNormNoMovDecay_model
+)
+comparacion
+```
+Al contrario que en arboles, utilizando min-max, podemos ver que aqui si que se tiene en cuenta la posición en el ranking y los movimientos. Con el modelo con el que mejores resultados obtenemos es con el mlpNorm1Decay_model. Por lo que, conseguimos que nos funcionen mejor las redes utilizando Decay que Dropout.
+/TO DO TODO PLOT
+
+A continuación vamos a ver si los resultados se mantienen para el escalado z-score.
+
+```{r}
+comparacion = data.frame(
+  mlpNorm2Dropout_model,
+  mlpNormNoMov2Dropout_model,
+  mlpNorm2Decay_model,
+  mlpNormNoMov2Decay_model
+)
+comparacion
+```
+
+Pues los resultados obtenidos anteriormente tambien se mantienen. El mejor modelo es el obtenido con Decay y que contiene los parametros de ranking y movimientos en la lista.
+
+Finalmente vamos a analizar los dos mejores modelos de mlp
+
+```{r}
+comparacion = data.frame(
+  mlpNorm1Decay_model,
+  mlpNorm2Decay_model
+)
+comparacion
+```
+MAE: En este caso, el modelo mlpNorm1Decay_model tiene un MAE más bajo (5.867074), lo que indica que, en promedio, las predicciones están más cerca de los valores reales en comparación con mlpNorm2Decay_model (6.416891). Un MAE más bajo sugiere un mejor rendimiento en términos de precisión.
+
+RMSE: Al igual que el MAE, el valor más bajo de RMSE en mlpNorm1Decay_model (9.227483) indica que este modelo tiene un rendimiento ligeramente mejor en términos de ajuste a los datos en comparación con mlpNorm2Decay_model (9.586898).
+
+En términos de ambos MAE y RMSE, mlpNorm1Decay_model parece tener un mejor rendimiento que mlpNorm2Decay_model. Esto sugiere que el primer modelo tiene una capacidad predictiva superior en este conjunto de datos específico.
+Aún así creemos que no es el mejor modelo después de haber visto los resultados de los arboles, de esto hablaremos en el ultimo apartado.
+
+Pero podemos ver un plot con las predicciones de ambos y el valor real y ver que son casi iguales entre sí, aunque la prediccion, como podemos ver no es la mejor. 
+
+```{r}
+predicciones1 = predict(predicciones1, newdata = sptesting1)
+datos = data.frame(Predicciones = predicciones1, Popularidad = sptesting1$popularity)
+
+ggplot(datos, aes(x = Predicciones, y = Popularidad)) +
+  geom_point(aes(color = "Predicciones"), size = 1, alpha = 0.2) +
+  geom_point(aes(x = Popularidad, color = "Popularidad"), size = 1, alpha = 0.3) +
+  labs(title = "Comparación de Predicciones y Popularidad",
+       x = "Predicciones", y = "Popularidad") +
+  theme_minimal() +
+  scale_color_manual(name = "Conjunto",
+                     values = c("Predicciones" = "violet", "Popularidad" = "red"))
+```
+
+```{r}
+predicciones2 = predict(predicciones2, newdata = testing)
+datos = data.frame(Predicciones = predicciones1, Popularidad = sptesting1$popularity)
+
+ggplot(datos, aes(x = Predicciones, y = Popularidad)) +
+  geom_point(aes(color = "Predicciones"), size = 1, alpha = 0.2) +
+  geom_point(aes(x = Popularidad, color = "Popularidad"), size = 1, alpha = 0.3) +
+  labs(title = "Comparación de Predicciones y Popularidad",
+       x = "Predicciones", y = "Popularidad") +
+  theme_minimal() +
+  scale_color_manual(name = "Conjunto",
+                     values = c("Predicciones" = "violet", "Popularidad" = "red"))
+```
+
 
 
 ## Cluestering
@@ -1580,6 +1604,11 @@ knnInfo = knnInfo$knn
 knnInfo$parameters
 ```
 Vemos que solo tenemos un parámetro, **k**, que es el número de vecinos más cercanos que se tienen en cuenta al realizar una predicción.
+
+```{r}
+spotiNormalizado = spSpotiNormalizado
+spotifyNormNoMovements = spSpotifyNormNoMovements
+```
 
 ```{r, eval=FALSE}
 set.seed(123)
