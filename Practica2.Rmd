@@ -1611,6 +1611,12 @@ spotifyNormNoMovements = spSpotifyNormNoMovements
 ```
 
 ```{r, eval=FALSE}
+
+### Grid Hiperparámetros
+
+**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+```{r knnReg, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1633,7 +1639,8 @@ fitControl <- trainControl(## 10-fold CV
                            number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
-
+```
+```{r knnReg, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnReg <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1643,12 +1650,11 @@ spotiKNN.modelo.knnReg <- train(popularity ~ .,
 spotiKNN.modelo.knnReg
 saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 ```
-
-
-```{r, eval=FALSE}
+```{r knnReg, eval=FALSE}
 knnReg_model = readRDS("knn/knnReg.rds")
 knnReg_model
 
+set.seed(123)  # Establecer semilla para reproducibilidad
 predicciones <- predict(knnReg_model, newdata = spotiKNN.Datos.Prueba)
 maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
 rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
@@ -1658,7 +1664,7 @@ maeKnn; rmseKnn
 
 Ahora vamos a probar con los datos normalizados pero sin las variables `daily_movement`, `daily_rank` y `weekly_movement`.
 
-```{r, eval=FALSE}
+```{r knnRegNoMov, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1681,7 +1687,8 @@ fitControl <- trainControl(## 10-fold CV
                            number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
-
+```
+```{r knnRegNoMov, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMov <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1691,18 +1698,113 @@ spotiKNN.modelo.knnRegNoMov <- train(popularity ~ .,
 spotiKNN.modelo.knnRegNoMov
 saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
-
-```{r}
+```{r knnRegNoMov}
+set.seed(123)
 knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
+knnRegNoMov_model
 
+predicciones <- predict(knnRegNoMov_model, newdata = spotiKNN.Datos.Prueba)
+maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
+
+maeKnn; rmseKnn
 ```
 
+Y acontinuación con clasificación
+```{r knnCla, eval=TRUE}
+spotiNormalizadoCL <- spotiNormalizado
+spotiNormalizadoCL$popularity_group <- cut(spotiNormalizado$popularity, 
+                                         breaks = c(0, 30, 60, 90, 101), 
+                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                         include.lowest = TRUE, 
+                                         right = FALSE)
+spotiNormalizadoCL <- spotiNormalizadoCL[, !names(spotiNormalizadoCL) %in% c("popularity")]
 
+set.seed(123)
+
+# Definir las variables de entrada y salida
+spotiKNN.Var.Salida.Usada <- c("popularity_group")
+spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoCL), spotiKNN.Var.Salida.Usada)
+
+# Crear una partición del 80% para entrenamiento y 20% para prueba
+spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salida.Usada]], 
+                                       p = 0.8, 
+                                       list = FALSE,
+                                       times = 1)
+
+# Crear conjuntos de entrenamiento y prueba
+spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
+spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
+```
+```{r knnCla, eval=FALSE}
+# Crear modelos utilizando el método train() de Caret
+spotiKNN.modelo.knnCla <- train(popularity_group ~ ., 
+                             data = spotiKNN.Datos.Entrenamiento, 
+                             method = "knn", 
+                             trControl = fitControl, 
+                             tuneGrid = mygrid)
+
+saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
+#print(spotiKNN.modelo.knn)
+```
+```{r knnCla}
+knnCla_model = readRDS("knn/knnCla.rds")
+knnCla_model
+
+predicciones <- predict(knnCla_model, newdata = spotiKNN.Datos.Prueba)
+# Calcular matriz de confusión
+cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
+cm
+```
+
+```{r knnClaNoMov, eval=TRUE}
+spotiNormalizadoNoMovCL <- spotifyNormNoMovements
+spotiNormalizadoNoMovCL$popularity_group <- cut(spotifyNormNoMovements$popularity, 
+                                         breaks = c(0, 30, 60, 90, 101), 
+                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                         include.lowest = TRUE, 
+                                         right = FALSE)
+spotiNormalizadoNoMovCL <- spotiNormalizadoNoMovCL[, !names(spotiNormalizadoNoMovCL) %in% c("popularity")]
+
+set.seed(123)
+
+# Definir las variables de entrada y salida
+spotiKNN.Var.Salida.Usada <- c("popularity_group")
+spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoNoMovCL), spotiKNN.Var.Salida.Usada)
+
+# Crear una partición del 80% para entrenamiento y 20% para prueba
+spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovCL[[spotiKNN.Var.Salida.Usada]], 
+                                       p = 0.8, 
+                                       list = FALSE,
+                                       times = 1)
+
+# Crear conjuntos de entrenamiento y prueba
+spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovCL[spotiKNN.Particion, ]
+spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovCL[-spotiKNN.Particion, ]
+```
+```{r knnClaNoMov, eval=FALSE}
+# Crear modelos utilizando el método train() de Caret
+spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ ., 
+                             data = spotiKNN.Datos.Entrenamiento, 
+                             method = "knn", 
+                             trControl = fitControl, 
+                             tuneGrid = mygrid)
+
+saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
+```
+```{r knnClaNoMov}
+knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
+knnClaNoMov_model
+
+predicciones <- predict(knnClaNoMov_model, newdata = spotiKNN.Datos.Prueba)
+# Calcular matriz de confusión
+cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
+cm
+```
 #### Normalizado z-score
 
 Por otra parte, vamos a ver qué tal serían los resultados para el normalizado z-score. Primero sin quitar las 3 columnas de antes.
-
-```{r, eval=FALSE}
+```{r knnRegZ, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1725,7 +1827,8 @@ fitControl <- trainControl(## 10-fold CV
                            number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
-
+```
+```{r knnRegZ, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegZ <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1733,16 +1836,21 @@ spotiKNN.modelo.knnRegZ <- train(popularity ~ .,
                              trControl = fitControl, 
                              tuneGrid = mygrid)
 spotiKNN.modelo.knnRegZ
-saveRDS(spotiKNN.modelo.knnRegZ, "knnRegNoMov.rds")
+saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```
+```{r knnRegZ}
+knnRegNoMov_model = readRDS("knn/knnRegZ.rds")
+knnRegNoMov_model
 
-```{r}
-knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
+predicciones <- predict(knnRegNoMov_model, newdata = spotiKNN.Datos.Prueba)
+maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
+
+maeKnn; rmseKnn
 ```
-
 
 Y ahora para el dataset sin las 3 columnas y con z-score.
-```{r, eval=FALSE}
+```{r knnRegNoMovZ, eval=FALSE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1773,106 +1881,22 @@ spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ .,
                              trControl = fitControl, 
                              tuneGrid = mygrid)
 spotiKNN.modelo.knnRegNoMovZ
-saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMov.rds")
+saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMovZ.rds")
 ```
+```{r knnRegNoMovZ}
+knnRegNoMovZ_model = readRDS("knn/knnRegNoMovZ.rds")
+knnRegNoMovZ_model
 
-```{r}
-knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
-```
+predicciones <- predict(knnRegNoMovZ_model, newdata = spotiKNN.Datos.Prueba)
+maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
 
-
-### Clasificación cluestering
-
-Tamibén hemos pensado en clasificar la variable predictora como lo hacíamos en los primeros apartados y que sea "Poco Conocida", "Popular" y "Muy Popular" de esta forma el resultado será mucho más visual y representativo. De esta forma el número de clusters será 3.
-
-```{r, eval=FALSE}
-spotiNormalizadoCL <- spotiNormalizado
-spotiNormalizadoCL$popularity_group <- cut(spotiNormalizado$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
-spotiNormalizadoCL <- spotiNormalizadoCL[, !names(spotiNormalizadoCL) %in% c("popularity")]
-
-set.seed(123)
-
-# Definir las variables de entrada y salida
-spotiKNN.Var.Salida.Usada <- c("popularity_group")
-spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoCL), spotiKNN.Var.Salida.Usada)
-
-# Crear una partición del 80% para entrenamiento y 20% para prueba
-spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
-
-# Crear conjuntos de entrenamiento y prueba
-spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
-spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
-
-# Crear modelos utilizando el método train() de Caret
-spotiKNN.modelo.knnCla <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
-
-saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
-#print(spotiKNN.modelo.knn)
+maeKnn; rmseKnn
 ```
 
 
-```{r}
-knnCla_model = readRDS("knn/knnCla.rds")
-knnCla_model
-
-#predicciones <- predict(knnCla_model, newdata = spotiKNN.Datos.Prueba)
-# Calcular matriz de confusión
-#cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
-#cm
-```
-
-```{r, eval=FALSE}
-spotiNormalizadoNoMovCL <- spotifyNormNoMovements
-spotiNormalizadoNoMovCL$popularity_group <- cut(spotifyNormNoMovements$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
-spotiNormalizadoNoMovCL <- spotiNormalizadoNoMovCL[, !names(spotiNormalizadoNoMovCL) %in% c("popularity")]
-
-set.seed(123)
-
-# Definir las variables de entrada y salida
-spotiKNN.Var.Salida.Usada <- c("popularity_group")
-spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoNoMovCL), spotiKNN.Var.Salida.Usada)
-
-# Crear una partición del 80% para entrenamiento y 20% para prueba
-spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovCL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
-
-# Crear conjuntos de entrenamiento y prueba
-spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovCL[spotiKNN.Particion, ]
-spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovCL[-spotiKNN.Particion, ]
-
-# Crear modelos utilizando el método train() de Caret
-spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
-
-saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
-#print(spotiKNN.modelo.knn)
-```
-
-```{r}
-knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
-```
-
-```{r, eval=FALSE}
+Y ahora quitando las 3 columnas.
+```{r knnClaZ, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizadoZScore
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizadoZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1896,7 +1920,8 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salid
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
-
+```
+```{r knnClaZ, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaZ <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1905,14 +1930,18 @@ spotiKNN.modelo.knnClaZ <- train(popularity_group ~ .,
                              tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
-#print(spotiKNN.modelo.knn)
 ```
-
-```{r}
+```{r knnClaZ}
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
+knnClaZ_model
+
+predicciones <- predict(knnClaZ_model, newdata = spotiKNN.Datos.Prueba)
+# Calcular matriz de confusión
+cm <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
+cm
 ```
 
-```{r, eval=FALSE}
+```{r knnClaNoMovZ, eval=TRUE}
 spotiNormalizadoNoMovZ_CL <- spotifyNormNoMovementsZScore
 spotiNormalizadoNoMovZ_CL$popularity_group <- cut(spotifyNormNoMovementsZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1936,7 +1965,8 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovZ_CL[[spotiKNN.Va
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovZ_CL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovZ_CL[-spotiKNN.Particion, ]
-
+```
+```{r knnClaNoMovZ, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1945,19 +1975,17 @@ spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ .,
                              tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
-#print(spotiKNN.modelo.knn)
 ```
-
-```{r}
+```{r knnClaNoMovZ}
 knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
+knnClaNoMovZ_model
+
+predicciones <- predict(knnClaNoMovZ_model, newdata = spotiKNN.Datos.Prueba)
+maeKnn <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
+rmseKnn <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
+
+maeKnn; rmseKnn
 ```
-
-### Grid Hiperparámetros
-
-**Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
-
-#### Normalizado z-score
-
 
 ### Resultados
 **Describir los resultados del algoritmo.**
