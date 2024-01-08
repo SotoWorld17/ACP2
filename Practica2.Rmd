@@ -1093,7 +1093,7 @@ En R, el algoritmo **mlpKeras** se basa en la construcción de redes neuronales 
 
 2. **Capa Dropout (Dropout Layer):** Si se utiliza Dropout en el modelo (`mlpKerasDropout`), se añade una capa de Dropout después de las capas ocultas. La capa Dropout apaga aleatoriamente un porcentaje de unidades durante el entrenamiento, lo que ayuda a prevenir el sobreajuste al introducir variabilidad en la red.
 
-3. **Capa Decay (Weight Decay):** Si se utiliza Decay en el modelo (`mlpKerasDecay`), se incorpora regularización L2 mediante el parámetro `lambda`. La regularización L2 penaliza los pesos grandes, evitando así el sobreajuste y mejorando la generalización del modelo. Nosotras utilizaremos dropout o decay por separado para comparar el rendimiento.
+3. **Capa Decay (Decay):** Si se utiliza Decay en el modelo (`mlpKerasDecay`), se incorpora regularización L2 mediante el parámetro `lambda`. La regularización L2 penaliza los pesos grandes, evitando así el sobreajuste y mejorando la generalización del modelo. Nosotras utilizaremos dropout o decay por separado para comparar el rendimiento.
 
 
 ### Requisitos
@@ -1171,6 +1171,14 @@ spotiNormalizadoZScore = spotiNormalizadoZScore[, !names(spotiNormalizadoZScore)
 spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNormNoMovementsZScore) %in% eliminar]
 
 ```
+
+```{r, include = false}
+spSpotiNormalizado2 = spotiNormalizado
+spSpotifyNormNoMovements2 = spotifyNormNoMovements
+spSpotiNormalizadoZScore2 = spotiNormalizadoZScore
+spSpotifyNormNoMovementsZScore2 = spotifyNormNoMovementsZScore
+```
+
 
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
@@ -2050,6 +2058,8 @@ Primero Dividimos la popularity en todos nuestros intervalos
 intervalos <- c(0, 30, 60, 90, 101)
 spotify$popularity <- cut(spotify$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
 
+spotifyNoMovements$popularity <- cut(spotifyNoMovements$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
 spotiNormalizadoZScore$popularity <- cut(spotiNormalizadoZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
 
 spotifyNormNoMovementsZScore$popularity <- cut(spotifyNormNoMovementsZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
@@ -2060,6 +2070,7 @@ spotifyNormNoMovements$popularity <- cut(spotifyNormNoMovements$popularity, brea
 
 ```
 
+## Random Forest
 
 ```{r}
 set.seed(123)
@@ -2115,10 +2126,10 @@ saveRDS(object= rf_500t, file = "classification500.rds")
 ```
 
 ```{r, eval=TRUE}
-rf_200t = readRDS("classification200.rds")
-rf_300t = readRDS("classification300.rds")
-rf_400t = readRDS("classification400.rds")
-rf_500t = readRDS("classification500.rds")
+rf_200t = readRDS("rf/Clasificacion/classification200.rds")
+rf_300t = readRDS("rf/Clasificacion/classification300.rds")
+rf_400t = readRDS("rf/Clasificacion/classification400.rds")
+rf_500t = readRDS("rf/Clasificacion/classification500.rds")
 
 resultados <- data.frame(
   "NumArboles" = c("200", "300", "400", "500"),
@@ -2182,3 +2193,259 @@ readRDS("spotifyNoMovementsClasificacion.rds")
 ```
 
 
+
+## Deep Learning
+
+Redefinimos la función ya que vamos a utilizar dos conjuntos de testing distintos.
+```{r}
+calcular_metricas <- function(modelo, test) {
+  predicciones <- predict(modelo, newdata = test)
+  matriz <- confusionMatrix(predicciones, testing$popularity)
+  return(matriz)
+}
+```
+
+Aqui estamos reusando algunos savePoints que hicimos anteriormente, ya que estas variables iban a sufrir modificaciones en la regresion.
+```{r}
+spotiNormalizado = spSpotiNormalizado2
+spotifyNormNoMovements = spSpotifyNormNoMovements2 
+spotiNormalizadoZScore= spSpotiNormalizadoZScore2  
+spotifyNormNoMovementsZScore = spSpotifyNormNoMovementsZScore2 
+intervalos <- c(0, 30, 60, 90, 101)
+spotiNormalizadoZScore$popularity <- cut(spotiNormalizadoZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotifyNormNoMovementsZScore$popularity <- cut(spotifyNormNoMovementsZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotiNormalizado$popularity <- cut(spotiNormalizado$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotifyNormNoMovements$popularity <- cut(spotifyNormNoMovements$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+```
+
+
+
+```{r}
+set.seed(124)
+
+inTraining <- createDataPartition(spotiNormalizado$popularity, times=1,p = .80, list = FALSE)
+training <- spotiNormalizado[ inTraining,]
+testing  <- spotiNormalizado[-inTraining,]
+
+training2 <- spotifyNormNoMovements[ inTraining,]
+testing2 <- spotifyNormNoMovements [-inTraining,]
+
+gridDropOut <- expand.grid(
+  size = 40, 
+  dropout =0.1,
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+gridDecay <- expand.grid(
+  size = 40, 
+  lambda =0.001,
+  batch_size = c(15,20),
+  lr = c(0.01,0.02),
+  rho = 0.91,
+  decay = c(1e-6, 1e-5),
+  activation = 'tanh'
+)
+
+# Definir el control del modelo
+fitControl <- trainControl(
+  method = "cv",  # Cross-validation
+  number = 10,     # Número de folds
+)
+```
+
+### Dropout
+
+```{r, eval=FALSE}
+
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDropout",  
+  trControl = fitControl,
+  tuneGrid = gridDropOut,
+  epochs = 25
+)
+
+
+saveRDS(object = modelo, file = "mlpNorm1DropoutClasificacion.rds")
+```
+
+```{r}
+mlpNorm1DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNorm1DropoutClasificacion.rds")
+mlpNorm1DropoutClasificacion = calcular_metricas(mlpNorm1DropoutClasificacion, testing)
+```
+
+
+```{r, eval=FALSE}
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDropout", 
+  trControl = fitControl,
+  tuneGrid = gridDropOut,
+  epochs = 25
+)
+
+saveRDS(object = modelo, file = "mlpNorm1NoMovDropoutClasificacion.rds")
+```
+
+```{r}
+mlpNorm1NoMovDropout_clasificacion = readRDS("mlpDropout/Clasificacion/mlpNorm1NoMovDropoutClasificacion.rds")
+mlpNorm1NoMovDropout_clasificacion = calcular_metricas(mlpNorm1NoMovDropout_clasificacion, testing2)
+```
+
+
+### Decay
+
+```{r, eval=FALSE}
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDecay", 
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
+
+saveRDS(object = modelo, file = "mlpNorm1DecayClasificacion.rds")
+```
+
+```{r}
+mlpNorm1DecayClasificacion = readRDS("mlpDecay/Clasificacion/mlpNorm1DecayClasificacion.rds")
+mlpNorm1DecayClasificacion = calcular_metricas(mlpNorm1DecayClasificacion, testing)
+```
+
+
+```{r, eval=FALSE}
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
+
+
+saveRDS(object = modelo, file = "mlpNorm1NoMovDecayClasificacion.rds")
+```
+
+```{r}
+mlpNorm1NoMovDecayClasificacion = readRDS("mlpDecay/Clasificacion/mlpNorm1NoMovDecayClasificacion.rds")
+mlpNorm1NoMovDecayClasificacion = calcular_metricas(mlpNorm1NoMovDecayClasificacion, testing2)
+```
+
+### Normalizado z-score
+
+```{r}
+set.seed(125)
+spotiNormalizado = spotiNormalizadoZScore
+spotifyNormNoMovements = spotifyNormNoMovementsZScore
+
+inTraining <- createDataPartition(spotiNormalizado$popularity, times=1,p = .80, list = FALSE)
+training <- spotiNormalizado[ inTraining,]
+testing  <- spotiNormalizado[-inTraining,]
+
+training2 <- spotifyNormNoMovements[ inTraining,]
+testing2 <- spotifyNormNoMovements [-inTraining,]
+
+fitControl <- trainControl(
+  method = "cv",  # Cross-validation
+  number = 10,     # Número de folds
+)
+```
+
+
+```{r}
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDropout",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = gridDropOut,
+  epochs = 25
+)
+
+
+saveRDS(object = modelo, file = "mlpNorm2DropoutClasificacion.rds")
+```
+
+```{r}
+mlpNorm2DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNorm2DropoutClasificacion.rds")
+mlpNorm2DropoutClasificacion = calcular_metricas(mlpNorm2DropoutClasificacion, testing)
+```
+
+```{r}
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDropout", 
+  trControl = fitControl,
+  tuneGrid = gridDropOut,
+  epochs = 25
+)
+
+saveRDS(object = modelo, file = "mlpNormNoMov2DropoutClasificacion.rds")
+```
+
+```{r}
+mlpNormNoMov2DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNormNoMov2DropoutClasificacion.rds")
+mlpNormNoMov2DropoutClasificacion = calcular_metricas(mlpNormNoMov2DropoutClasificacion, testing2)
+```
+
+```{r}
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training,
+  method = "mlpKerasDecay",  
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
+
+saveRDS(object = modelo, file = "mlpNorm2DecayClasificacion.rds")
+```
+
+```{r}
+mlpNorm2DecayClasificacion = readRDS("mlpDecay/Clasificacion/mlpNorm2DecayClasificacion.rds")
+mlpNorm2DecayClasificacion = calcular_metricas(mlpNorm2DecayClasificacion, testing)
+```
+
+```{r}
+# Entrenar el modelo utilizando train()
+modelo <- train(
+  popularity ~ ., 
+  data = training2,
+  method = "mlpKerasDecay",  # Puedes ajustar esto según el nombre del método que estás utilizando
+  trControl = fitControl,
+  tuneGrid = gridDecay,
+  epochs = 25
+)
+
+saveRDS(object = modelo, file = "mlpNormNoMov2DecayClasificacion.rds")
+```
+
+```{r}
+mlpNormNoMov2DecayClasificacion = readRDS("mlpDecay/Clasificacion/mlpNormNoMov2DecayClasificacion.rds")
+mlpNormNoMov2DecayClasificacion = calcular_metricas(mlpNormNoMov2DecayClasificacion, testing2)
+```
+
+Finalmente tenemos ya calculadas todas las matrices de confusión, aunque no las vamos a plotear todas, solo la mejor.
+
+```{r}
+mlpNorm1DropoutClasificacion
+```
+Esta tambien nos da unos resultados relativamente altos aunque no tanto como los de arboles.
+
+# Eleccion de Modelo
+
+Al contrario que anteriormente no vamos a plotear la diferencia en nuestros modelos de precisión. Solo vamos a mencionar cual escogemos: va a ser el modelo de RandomForest debido a su gran precisión a la hora de clasificar los datos frente a las redes neuronales, quizás con un grid más grande para redes neuronales habriamos conseguido mejores resultados.
