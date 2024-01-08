@@ -1881,8 +1881,10 @@ saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```{r knnRegZ3}
 knnRegNoMov_model = readRDS("knn/knnRegZ.rds")
 knnRegNoMov_model
+knnRegZ_model
 
 predicciones <- predict(knnRegNoMov_model, newdata = spotiKNN.Datos.Prueba)
+predicciones <- predict(knnRegZ_model, newdata = spotiKNN.Datos.Prueba)
 maeKnnRegZ <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
 rmseKnnRegZ <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
 
@@ -2031,6 +2033,10 @@ cmknnClaNoMovZ
 
 El modelo de clasificación presenta una precisión global del **91.09%**, demostrando un rendimiento consistente en la categorización de la popularidad de canciones. Aunque la sensibilidad en la categoría "nada popular" es baja, las sensibilidades en "poco popular", "algo popular" y "hit" son superiores al 72%
 
+
+### Resultados
+**Describir los resultados del algoritmo.**
+
 Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
 
 ```{r}
@@ -2052,12 +2058,16 @@ Por último, el modelo KnnRegNoMovZ es similar al modelo KnnRegNoMov. La versió
 
 ### Resultados
 **Describir los resultados del algoritmo.**
+Por lo que el mejor modelo es KnnRegZ, normalizado con z-score y con las variables.
 
 # Apartado D
 ## Modelo Final
 
 ```{r}
 {r}
+Por último, vamos a decidir el modelo final que utilizaremos para la predicción de la popularidad para nuestros datos.
+
+```{r}
 set.seed(1212)
 
 # Modelos preentrenados
