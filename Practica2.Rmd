@@ -854,6 +854,7 @@ La idea clave es combinar la información de múltiples árboles para reducir so
 Random Forest no tiene requisitos estrictos en cuanto al preprocesamiento de datos. Sin embargo, cambios que hemos hecho en los datos ayudarán al rendimiento como puede ser la eliminación de datos no relevantes y el manejo de los valores nulos.
 
 Tal y como vimos en clase vamos a utilizar la función ranger, debido a su rapidez en la implementación de bosques aleatorios.
+
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 
@@ -1084,6 +1085,17 @@ El **Deep Learning** se utiliza en redes neuronales profundas para modelar y res
 
 Este proceso se repite en varias épocas (iteraciones a través del conjunto de datos) durante el entrenamiento.
 
+Nosotras, en cambio, al utilizar R vamos a tener un funcionamiento diferente.
+
+En R, el algoritmo **mlpKeras** se basa en la construcción de redes neuronales artificiales utilizando la interfaz de Keras. Aquí está la descripción del funcionamiento, junto con las estrategias específicas relacionadas con **Dropout** y **Decay**:
+
+1. **Construcción del modelo:** Se define la arquitectura del modelo utilizando la función `keras_model_sequential()`. Se añaden capas mediante el método `%>%`, especificando el número de unidades y la función de activación en cada capa.
+
+2. **Capa Dropout (Dropout Layer):** Si se utiliza Dropout en el modelo (`mlpKerasDropout`), se añade una capa de Dropout después de las capas ocultas. La capa Dropout apaga aleatoriamente un porcentaje de unidades durante el entrenamiento, lo que ayuda a prevenir el sobreajuste al introducir variabilidad en la red.
+
+3. **Capa Decay (Weight Decay):** Si se utiliza Decay en el modelo (`mlpKerasDecay`), se incorpora regularización L2 mediante el parámetro `lambda`. La regularización L2 penaliza los pesos grandes, evitando así el sobreajuste y mejorando la generalización del modelo. Nosotras utilizaremos dropout o decay por separado para comparar el rendimiento.
+
+
 ### Requisitos
 **Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo. Explicar cómo se ha tenido en cuenta estos requisitos a la hora de generar los datos de training específicos para este algoritmo.**
 
@@ -1106,7 +1118,7 @@ spotifyNormNoMovementsZScore[, restantesNormal] = scale(spotifyNormNoMovementsZS
 ```
 A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`. Para ello vamos a utilizar la tecnica one-Hot-Encoding. Que nos permitira representar numéricamente variables categóricas y manejar variables categóricas con múltiples categorías, estas variables no las tendremos que normalizar, ya que hemos generado una columna nueva para cada posible valor de las columnas `key`, `mode`y `time_signature`, poniendo como valor 1 si coincide el valor original con el nombre de la columna.
 `
-```{r, include = false}
+```{r, include = FALSE}
 spSpotiNormalizado = spotiNormalizado
 spSpotifyNormNoMovements = spotifyNormNoMovements
 spSpotiNormalizadoZScore = spotiNormalizadoZScore
@@ -1162,7 +1174,9 @@ spotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore[, !names(spotifyNorm
 
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
-Se consideran para la resolución del modelo `mlpKerasDropout` y `mlpKerasDecay`, creemos que los modelos de los costes no son los más acertados, debido a que no nos interesa tener como hiperparametro costes para el modelo que estamos resolviendo
+
+Se consideran para la resolución del modelo `mlpKerasDropout` y `mlpKerasDecay`, creemos que los modelos de los costes no son los más acertados, debido a que no nos interesa tener como hiperparámetros costes para el modelo que estamos resolviendo.
+
 ```{r}
 mlpDropoutInfo = getModelInfo("mlpKerasDropout")
 
@@ -1172,7 +1186,6 @@ mlpHiper
 ```
 
 Podemos ver como ambas funciones tienen en común los parametros `size`, `batch_size`, `lr`, `rho`, `decay`, `activation`
-//TODO TO DO
  - size: Número de neuronas en una capa.
  - batch_size: Cantidad de datos utilizados en cada actualización del modelo durante el entrenamiento.
  - lr (tasa de aprendizaje): Controla el tamaño de los pasos durante la optimización.
@@ -1180,7 +1193,8 @@ Podemos ver como ambas funciones tienen en común los parametros `size`, `batch_
  - decay: Decaimiento de la tasa de aprendizaje a lo largo del tiempo.
  - activation: Función de activación aplicada a las salidas de las unidades en una capa.
  
- por otro lado tenemos `dropout` que pertenece a mlpKerasDropout y `lambda` que pertenece a mlpKerasDecay
+ Por otro lado tenemos `dropout` que pertenece a mlpKerasDropout y `lambda` que pertenece a mlpKerasDecay
+ 
  -`dropout` La tasa de Dropout es un hiperparámetro que controla la proporción de unidades (neuronas) en una capa que se "apagan" o se excluyen aleatoriamente durante cada paso de entrenamiento. Esto significa que, durante el entrenamiento, un porcentaje de las conexiones en la red se desactivan temporalmente, lo que ayuda a prevenir el sobreajuste y mejora la generalización del modelo.
 
  - `lambda`  El parámetro lambda se asocia con la regularización L2. La regularización L2 agrega un término a la función de pérdida del modelo que penaliza los pesos de las conexiones, evitando que tomen valores extremadamente grandes. Esto ayuda a prevenir el sobreajuste y a mejorar la robustez del modelo.
@@ -1573,7 +1587,7 @@ ggplot(datos, aes(x = Predicciones, y = Popularidad)) +
                      values = c("Predicciones" = "violet", "Popularidad" = "red"))
 ```
 
-## clustering
+## Clustering
 ### Funcionamiento
 **Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
 
@@ -1612,6 +1626,7 @@ knnInfo = getModelInfo("knn")
 knnInfo = knnInfo$knn
 knnInfo$parameters
 ```
+
 Vemos que solo tenemos un parámetro, **k**, que es el número de vecinos más cercanos que se tienen en cuenta al realizar una predicción.
 
 ```{r}
@@ -1624,6 +1639,8 @@ spotifyNormNoMovementsZScore = spSpotifyNormNoMovementsZScore
 ### Grid Hiperparámetros
 
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+El único hiperparámetro al que le vamos a asignar distintos valores es k. En un principio pusimos valores pequeños como 5, 6, 7 pero vimos que los resultados eran pésimos así que decidimos poner valores más altos y des esta forma tuvimos mejores resultados como se va a ver a continuación.
 
 ```{r knnReg, eval=TRUE}
 set.seed(123)
@@ -2000,6 +2017,7 @@ cmknnClaNoMovZ
 
 
 Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
+
 ```{r}
 comparacion <- data.frame(
   Modelo = c("KnnReg", "KnnRegNoMov", "KnnRegZ", "KnnRegNoMovZ"),
