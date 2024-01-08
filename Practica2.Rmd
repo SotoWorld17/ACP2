@@ -28,11 +28,6 @@ library(plotly)
 library(mlbench)
 library(rpart.plot)
 library(Metrics)
-library(keras)
-library(tensorflow)
-detach("package:keras")
-detach("package:tensorflow")
-search()
 ```
 
 ```{r setup, include=FALSE}
@@ -40,13 +35,6 @@ knitr::opts_chunk$set(echo = TRUE)
 colorspie <- c("skyblue", "plum3", "pink2", "sandybrown", "palegreen3")
 colorpieborde <- c("skyblue4", "plum4", "pink3", "salmon3", "palegreen4")
 ```
-
-
-
-Sys.setenv(RSTUDIO_PANDOC = "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools")
-
-rmarkdown::render("Practica2.Rmd")
-
 
 
 # Apartado A
@@ -321,10 +309,9 @@ myplot
 Vemos como casi todas las canciones tienen un `time_signature` de 4, y que no hay ninguna con 2. Por lo tanto seguramente esta variable sea un poco indiferente a la hora de conocer la popularidad. Pero nos ayudará a determinar que la mayoría de canciones se hacen populares cuando su `time_signature` es de 4.
 
 
-*TODO*
 Antes de comenzar con las preguntas del apartado 1, nos gustaría hacer un pequeño PCA para mostrar si con las variables que tenemos numéricas seríamos capaces de determinar algo de información sobre la popularidad.
 
-```{r}
+```{r, eval=FALSE}
 analysis_pca = analysisContinuas
 analysis_pca$daily_rank = analysis_data$daily_rank
 analysis_pca$weekly_movement = analysis_data$weekly_movement 
@@ -340,13 +327,13 @@ pcas = as.data.frame(pca_result$x, stringsAsFactors =F)
 pcas = cbind(ESTATUS = analysis_pca_estatus,pcas)
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggplot(pcas, aes(PC1, PC2, color = ESTATUS, shape=ESTATUS)) +
   geom_point(size = 1, alpha=0.6) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   geom_vline(xintercept = 0, linetype = "dashed") +
   scale_color_manual(values = colorspie) +
-  scale_shape_manual(values = c(17, 16, 15)) +
+  scale_shape_manual(values = c(17, 16, 15, 14)) +
   xlab("Primera componente principal") +
   ylab("Segunda componente principal") +
   ggtitle("Las dos primeras componentes principales de titanicData") +
@@ -355,7 +342,7 @@ ggplot(pcas, aes(PC1, PC2, color = ESTATUS, shape=ESTATUS)) +
   theme(legend.position = "top")
 ```
 
-```{r}
+```{r,eval=FALSE}
 autoplot(pca_result, data=analysis_data, cex = 0.7, alpha=0.6, color = "popularity_group",
          loadings = TRUE, loadings.colour = 'gold',
          loadings.label = TRUE, loadings.label.size = 4, loadings.label.colour = 'mediumvioletred')
@@ -367,7 +354,7 @@ fviz_pca_var(pca_result, col.var = "contrib",
 
 Debido a la gran cantidad de datos es casi imposible ver lo que nos muestra este PCA, aunque podemos ver la parte representativa de cada componente en el análisis. También se nos dice que variables como weekly_movement, energy, loudness... Presentan una gran variación para nuestros datos.
 
-```{r}
+```{r, eval=FALSE}
 (VE <- pca_result$sdev^2)
 PVE <- VE / sum(VE)
 cumsum(round(PVE, 2))
@@ -377,7 +364,7 @@ Vemos que con 11 de estas variables ya seríamos capaces de procesar un 98% de l
 Finalmente vamos a analizar un poco de la variable `country` la que hemos eliminado anteriormente sin tener reparo en que esta variable tendrá canciones con popularidad distinta en cada país, vamos a quedarnos con aquellas con mayor popularidad y por lo tanto vamos a ver solo un poco de como afectan las variables numéricas a los distintos países.
 *TODO*
 
-```{r, eval=FALSE}
+```{r}
 library(rnaturalearth)
 library(ggplot2)
 library(purrr)
@@ -807,7 +794,7 @@ savePoint = spotify
 
 creemos que saber de antemano la popularidad exacta de una canción va a ser muy complicado. Creemos que es mejor idea hacer una factor de la popularidad donde se adivine si esta va a ser muy popular (su valor de popularidad es de entre 90-100), si va a ser popular (su valor de popularidad es de entre 60-90) o si no va a ser muy popular (su valor de popularidad es de entre 30-60) o si apenas lo va a ser (0-30). Porque pensamos que el objetivo, es saber si la canción va a ser buena o no y preferimos abordar un problema de clasificación a un problema de regresión, ya que en caso de llevar a la realidad, creemos que interesaría más darle a conocer este dato a un número de popularidad más exacta, por lo que, si la otra idea no es abordable llevaremos a cabo una que trabaje con la variable `popularity`, factorizada, de la siguiente manera:
 
-```{r, eval= false}
+```{r, eval=FALSE}
 intervalos <- c(0, 30, 60, 90, 101)
 spotify2 = spotify
 spotify2$popularity <- cut(spotify2$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
@@ -952,7 +939,7 @@ rf_500t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_500t, file = "numTrees500.rds")
 ```
 
-```{r, eval=FALSE}
+```{r,eval=FALSE}
 rf_200t = readRDS("rf/numTrees200.rds")
 rf_300t = readRDS("rf/numTrees300.rds")
 rf_400t = readRDS("rf/numTrees400.rds")
@@ -969,7 +956,7 @@ resultados
 
 Podemos para todas las opciones de número de árboles que hemos contemplado obtenemos la misma configuración.
 
-```{r, eval=FALSE}
+```{r,eval=FALSE}
 # Función para calcular MAE y RMSE
 calcular_metricas <- function(modelo) {
   predicciones <- predict(modelo, newdata = testing)
@@ -991,7 +978,7 @@ comparacion
 
 Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 300 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement`.
 
-```{r, eval =FALSE}
+```{r, eval=FALSE}
 #spotify = spotifyNoMovements
 inTraining <- createDataPartition(spotifyNoMovements$popularity, times=1,p = .80, list = FALSE)
 training <- spotifyNoMovements[ inTraining,]
@@ -1018,11 +1005,11 @@ spotifyrf <-train (popularity ~ ., data = training,
 saveRDS(object= spotifyrf, file = "spotifyNoMovements.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 rfNoMov = readRDS("rf/spotifyNoMovements.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 predicciones <- predict(rfNoMov, newdata = testing)
 mae <- mae(predicciones, testing$popularity)
 rmse <- rmse(predicciones, testing$popularity)
@@ -1058,7 +1045,7 @@ El modelo se entrenó con *300 árboles*, y los resultados fueron los siguientes
 
 Estos resultados indican que el modelo tiene una capacidad sustancial para hacer predicciones precisas sobre la popularidad de las canciones en función de las variables disponibles. En comparación con los modelos anteriores que incluían las variables excluidas, este modelo reducido logró un rendimiento aún mejor, lo que respalda la decisión de prescindir de esas características específicas en este contexto.
 
-```{r}
+```{r, eval=FALSE}
 rfNoMov
 ```
 
@@ -1107,7 +1094,7 @@ savePointNorm = spotiNormalizado
 ```
 
 
-```{r, eval=FALSE}
+```{r}
 
 key_values <- c(0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
 
@@ -1785,7 +1772,7 @@ knnCla_model
 #cm
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 spotiNormalizadoNoMovCL <- spotifyNormNoMovements
 spotiNormalizadoNoMovCL$popularity_group <- cut(spotifyNormNoMovements$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1825,7 +1812,7 @@ saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
 knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 spotiNormalizadoCL <- spotiNormalizadoZScore
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizadoZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1865,7 +1852,7 @@ saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 spotiNormalizadoNoMovZ_CL <- spotifyNormNoMovementsZScore
 spotiNormalizadoNoMovZ_CL$popularity_group <- cut(spotifyNormNoMovementsZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
