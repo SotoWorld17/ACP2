@@ -98,14 +98,14 @@ barplot(table(categories), main = "Recuento de Canciones por Intervalo de Popula
 
 Viendo este gráfico se nos ocurre para hacer nuestro pequeño análisis 4 grupos principales.
 
-  - **Nada populares**, cuyo rango será de 0 a 30, este será el menor grupo ya que como se observa en la gráfica no hay prácticamente canciones que hayan sido tan poco populares.
-  
-  - **Poco populares**, cuyo rango de popularidad será de 30 a 60, este rango abarca canciones que han sido conocidas pero tampoco mucho.
-  
-  - **Algo populares**, cuyo rango de popularidad sera de 60 a 90, son canciones que sí han sido populares.
-  
-  - **Hit**, son las canciones que su popularidad está entre 90 y 100, es decir, que han sido las más populares y muchísima gente las conoce.
-  
+- **Nada populares**, cuyo rango será de 0 a 30, este será el menor grupo ya que como se observa en la gráfica no hay prácticamente canciones que hayan sido tan poco populares.
+
+- **Poco populares**, cuyo rango de popularidad será de 30 a 60, este rango abarca canciones que han sido conocidas pero tampoco mucho.
+
+- **Algo populares**, cuyo rango de popularidad sera de 60 a 90, son canciones que sí han sido populares.
+
+- **Hit**, son las canciones que su popularidad está entre 90 y 100, es decir, que han sido las más populares y muchísima gente las conoce.
+
 Después de haber hecho esta división vamos a seguir haciendo este análisis sin tener en cuenta los países, sino la popularidad "mundial" tras haber hecho la media para no ver en el análisis tantos valores donde la mayoría van a ser repetidos. Para ello ahora vamos a empezar visualizando las variables categóricas que pueden tener algo de relación con `popularity`.
 
 Vamos a utilizar `analysis_data`, donde en principio no vamos a tener en cuenta el país:
@@ -275,7 +275,7 @@ myplot = ggplot(data=analysis_data, aes(x=weekly_movement_group, fill=popularity
   theme(axis.text.x = element_text(angle = 15, hjust = 1))
 myplot
 ```
- Podemos ver como al igual que antes son las canciones que se mantienen las que más populares son.
+Podemos ver como al igual que antes son las canciones que se mantienen las que más populares son.
 
 
 - `snapshot_date` interesante análisis junto `album_realease_date`
@@ -510,7 +510,7 @@ Pensamos que las variables que más relación tienen con la popularidad son las 
 - `name`: creemos que el nombre de la canción no tendrá relevancia porque muchas de las canciones que más escuchamos en nuestro día a día porque se han hecho ``virales'' gracias a las redes sociales no conocemos sus nombres en un principio. 
 
 - `country`: la ubicación geográfica del origen de la canción no tiene una correlación evidente con su popularidad ya que la mayoría de canciones que escuchamos que son populares no sabemos cuál es su origen o no nos interesa para porder disfrutarla.
- 
+
 - `album_name`: muchas de las canciones no más populares no salen ni en un álbum y en general, la gente no se fija en el álbum en sí al que pertenece una canción, simplemente en la canción si les gusta. 
 
 # Apartado B
@@ -572,7 +572,7 @@ A continuación, vamos a ver si tenemos **outliers** y en caso de verlos, los el
 ```{r}
 analysisContinuas= spotify[ , c("popularity", "duration_ms", "danceability","energy", "loudness", "speechiness", "acousticness", "liveness", "instrumentalness", "valence", "tempo")]
 mymelt=melt(analysisContinuas, id.vars=1, value.name="FeatureValue", variable.name="Feature")
- 
+
 
 unique_features <- unique(mymelt$Feature)
 num_columns <- 5
@@ -588,7 +588,7 @@ single_plot_height <- total_height / num_rows
 # Itera a través de cada característica
 for (i in seq_along(unique_features)) {
   subset_data <- mymelt[mymelt$Feature == unique_features[i], ]
-   current_color <- colorspie[(i - 1) %% length(colorspie) + 1]
+  current_color <- colorspie[(i - 1) %% length(colorspie) + 1]
   
   # Crea el gráfico con ggplot usando los datos filtrados
   plot <- ggplot(data=subset_data, aes(x=Feature, y=FeatureValue, color=Feature, fill=Feature)) +
@@ -760,12 +760,12 @@ El carácter secuancial de los datos podría aprovechase al considerar la creaci
 
 
 Antes de empezar el apartado C, vamos a eliminar finalmente los atributos que creemos que no nos van a ser de utilidad para realizar nuestros modelos. Para ello primero vamos a hacer un repaso con los pasos seguidos anteriormente:
- - Se eliminaron valores nulos, para poder hacer agrupaciones sin preocuparnos de los NA'S
- - Se eliminaron "outliers", aunque los eliminados fueron nuestra decisión, ya que vimos que había demasiados datos considerados outliers en distintos valores fuera del IQR que nos parecian representativos y necesarios. 
+- Se eliminaron valores nulos, para poder hacer agrupaciones sin preocuparnos de los NA'S
+- Se eliminaron "outliers", aunque los eliminados fueron nuestra decisión, ya que vimos que había demasiados datos considerados outliers en distintos valores fuera del IQR que nos parecian representativos y necesarios. 
 
 
 
- 
+
 
 Hasta ahora no hemos hecho nada más que añadir columnas, pero sabemos de antemano que no todas ellas nos van a ser de utilidad para entrenar nuestro modelo. Sin embargo, no las hemos eliminado anteriormente para hacer la limpieza de datos pero ahora procedemos a quitar las columnas `spotify_id`, `name`, `artists`, `album_name`, `album_release_date`   
 
@@ -871,7 +871,7 @@ Donde `mtry` es el número de variables a considerar en cada división del árbo
 
 Por otro lado `splitrule` es la regla que se utiliza para dividir cada nodo. Al tratarse de un problema de regresión, estamos probando con variance y con extratree.
 Y por ultimo `min.node.size` que es el numero de ejemplos que debe haber como minimo en cada nodo. En nuestro caso estaremos probando con 50,100 y 150.
- 
+
 ### Grid Hiperparámetros
 **Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
 
@@ -884,8 +884,8 @@ mygrid <- expand.grid(
   min.node.size = c(50, 100, 150))
 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 ```
 
 
@@ -997,8 +997,8 @@ testing <- spotifyNoMovements[ -inTraining,]
 
 ```{r, eval=FALSE}
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 
 mygrid <- expand.grid(
   mtry = 6,
@@ -1007,8 +1007,8 @@ mygrid <- expand.grid(
 mygrid
 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 
 spotifyrf <-train (popularity ~ ., data = training,
                    method = "ranger",
@@ -1161,7 +1161,7 @@ for (mode_value in modes) {
   spotifyNormNoMovements[column_name] <- as.integer(spotifyNormNoMovements$mode == mode_value)
   spotiNormalizadoZScore[column_name] <- as.integer(spotiNormalizadoZScore$mode == mode_value)
   spotifyNormNoMovementsZScore[column_name] <- as.integer(spotifyNormNoMovementsZScore$mode == mode_value)
-
+  
 }
 
 eliminar = c('mode', 'key', 'is_explicit', 'time_signature')
@@ -1194,18 +1194,18 @@ mlpHiper
 ```
 
 Podemos ver como ambas funciones tienen en común los parámetros `size`, `batch_size`, `lr`, `rho`, `decay`, `activation`
- - size: Número de neuronas en una capa.
- - batch_size: Cantidad de datos utilizados en cada actualización del modelo durante el entrenamiento.
- - lr (tasa de aprendizaje): Controla el tamaño de los pasos durante la optimización.
- - rho: Parámetro asociado con métodos de optimización específicos (como en RMSprop).
- - decay: Decaimiento de la tasa de aprendizaje a lo largo del tiempo.
- - activation: Función de activación aplicada a las salidas de las unidades en una capa.
- 
- Por otro lado tenemos `dropout` que pertenece a mlpKerasDropout y `lambda` que pertenece a mlpKerasDecay
- 
- -`dropout` La tasa de Dropout es un hiperparámetro que controla la proporción de unidades (neuronas) en una capa que se "apagan" o se excluyen aleatoriamente durante cada paso de entrenamiento. Esto significa que, durante el entrenamiento, un porcentaje de las conexiones en la red se desactivan temporalmente, lo que ayuda a prevenir el sobreajuste y mejora la generalización del modelo.
+- size: Número de neuronas en una capa.
+- batch_size: Cantidad de datos utilizados en cada actualización del modelo durante el entrenamiento.
+- lr (tasa de aprendizaje): Controla el tamaño de los pasos durante la optimización.
+- rho: Parámetro asociado con métodos de optimización específicos (como en RMSprop).
+- decay: Decaimiento de la tasa de aprendizaje a lo largo del tiempo.
+- activation: Función de activación aplicada a las salidas de las unidades en una capa.
 
- - `lambda`  El parámetro lambda se asocia con la regularización L2. La regularización L2 agrega un término a la función de pérdida del modelo que penaliza los pesos de las conexiones, evitando que tomen valores extremadamente grandes. Esto ayuda a prevenir el sobreajuste y a mejorar la robustez del modelo.
+Por otro lado tenemos `dropout` que pertenece a mlpKerasDropout y `lambda` que pertenece a mlpKerasDecay
+
+-`dropout` La tasa de Dropout es un hiperparámetro que controla la proporción de unidades (neuronas) en una capa que se "apagan" o se excluyen aleatoriamente durante cada paso de entrenamiento. Esto significa que, durante el entrenamiento, un porcentaje de las conexiones en la red se desactivan temporalmente, lo que ayuda a prevenir el sobreajuste y mejora la generalización del modelo.
+
+- `lambda`  El parámetro lambda se asocia con la regularización L2. La regularización L2 agrega un término a la función de pérdida del modelo que penaliza los pesos de las conexiones, evitando que tomen valores extremadamente grandes. Esto ayuda a prevenir el sobreajuste y a mejorar la robustez del modelo.
 
 La prinicpal diferencia radica en:
 
@@ -1330,9 +1330,9 @@ calcular_metricas <- function(modelo, test) {
   return(c(MAE = mae, RMSE = rmse))
 }
 
- mlpNorm1Dropout = calcular_metricas(mlpNorm1Dropout, testing)
- mlpNormNoMovDropout_model = calcular_metricas(mlpNormNoMovDropout_model, testing2)
- 
+mlpNorm1Dropout = calcular_metricas(mlpNorm1Dropout, testing)
+mlpNormNoMovDropout_model = calcular_metricas(mlpNormNoMovDropout_model, testing2)
+
 ```
 
 
@@ -1368,6 +1368,7 @@ saveRDS(object = modelo, file = "mlpNorm1Decay.rds")
 ```{r}
 mlpNorm1Decay_model = readRDS("mlpDecay/Regresion/mlpNorm1Decay.rds")
 predicciones1 = mlpNorm1Decay_model
+mlpNorm1DecayModel = predicciones1 
 ```
 
 Establecemos el nuevo grid para que las proximas ejecuciones no tarden tanto a uno de 8 combinaciones. Al igual que hicimos anteriormente.
@@ -1401,8 +1402,8 @@ mlpNormNoMovDecay_model = readRDS("mlpDecay/Regresion/mlpNormNoMovDecay.rds")
 ```
 
 ```{r}
- mlpNorm1Decay_model = calcular_metricas(mlpNorm1Decay_model, testing)
- mlpNormNoMovDecay_model = calcular_metricas(mlpNormNoMovDecay_model, testing2)
+mlpNorm1Decay_model = calcular_metricas(mlpNorm1Decay_model, testing)
+mlpNormNoMovDecay_model = calcular_metricas(mlpNormNoMovDecay_model, testing2)
 ```
 
 ### Normalizado z-score
@@ -1533,7 +1534,6 @@ comparacion = data.frame(
 comparacion
 ```
 Al contrario que en arboles, utilizando min-max, podemos ver que aquí si que se tiene en cuenta la posición en el ranking y los movimientos. Con el modelo con el que mejores resultados obtenemos es con el mlpNorm1Decay_model. Por lo que, conseguimos que nos funcionen mejor las redes utilizando Decay que Dropout.
-/TO DO TODO PLOT
 
 A continuación vamos a ver si los resultados se mantienen para el escalado z-score.
 
@@ -1662,9 +1662,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizado), spotiKNN.Var.Sa
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizado[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizado[spotiKNN.Particion, ]
@@ -1672,18 +1672,18 @@ spotiKNN.Datos.Prueba <- spotiNormalizado[-spotiKNN.Particion, ]
 
 # Usamos cross-validación 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
 ```{r knnReg2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnReg <- train(popularity ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                data = spotiKNN.Datos.Entrenamiento, 
+                                method = "knn", 
+                                trControl = fitControl, 
+                                tuneGrid = mygrid)
 spotiKNN.modelo.knnReg
 saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 ```
@@ -1710,9 +1710,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotifyNormNoMovements), spotiKNN.
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotifyNormNoMovements[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotifyNormNoMovements[spotiKNN.Particion, ]
@@ -1720,18 +1720,18 @@ spotiKNN.Datos.Prueba <- spotifyNormNoMovements[-spotiKNN.Particion, ]
 
 # Usamos cross-validación 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
 ```{r knnRegNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMov <- train(popularity ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                     data = spotiKNN.Datos.Entrenamiento, 
+                                     method = "knn", 
+                                     trControl = fitControl, 
+                                     tuneGrid = mygrid)
 spotiKNN.modelo.knnRegNoMov
 saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
@@ -1751,10 +1751,10 @@ Y a continuación con clasificación:
 ```{r knnCla1, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizado
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizado$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
+                                           breaks = c(0, 30, 60, 90, 101), 
+                                           labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                           include.lowest = TRUE, 
+                                           right = FALSE)
 spotiNormalizadoCL <- spotiNormalizadoCL[, !names(spotiNormalizadoCL) %in% c("popularity")]
 
 set.seed(123)
@@ -1765,9 +1765,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoCL), spotiKNN.Var.
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
@@ -1776,10 +1776,10 @@ spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
 ```{r knnCla2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnCla <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                data = spotiKNN.Datos.Entrenamiento, 
+                                method = "knn", 
+                                trControl = fitControl, 
+                                tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
 ```
@@ -1797,10 +1797,10 @@ Clasificación con alta precisión en las categorías "algo popular" y "hit". Bu
 ```{r knnClaNoMov1, eval=TRUE}
 spotiNormalizadoNoMovCL <- spotifyNormNoMovements
 spotiNormalizadoNoMovCL$popularity_group <- cut(spotifyNormNoMovements$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
+                                                breaks = c(0, 30, 60, 90, 101), 
+                                                labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                                include.lowest = TRUE, 
+                                                right = FALSE)
 spotiNormalizadoNoMovCL <- spotiNormalizadoNoMovCL[, !names(spotiNormalizadoNoMovCL) %in% c("popularity")]
 
 set.seed(123)
@@ -1811,9 +1811,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoNoMovCL), spotiKNN
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovCL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovCL[spotiKNN.Particion, ]
@@ -1822,10 +1822,10 @@ spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovCL[-spotiKNN.Particion, ]
 ```{r knnClaNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                     data = spotiKNN.Datos.Entrenamiento, 
+                                     method = "knn", 
+                                     trControl = fitControl, 
+                                     tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
 ```
@@ -1853,9 +1853,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoZScore), spotiKNN.
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizadoZScore[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoZScore[spotiKNN.Particion, ]
@@ -1863,26 +1863,27 @@ spotiKNN.Datos.Prueba <- spotiNormalizadoZScore[-spotiKNN.Particion, ]
 
 # Usamos cross-validación 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
 ```{r knnRegZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegZ <- train(popularity ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                 data = spotiKNN.Datos.Entrenamiento, 
+                                 method = "knn", 
+                                 trControl = fitControl, 
+                                 tuneGrid = mygrid)
 spotiKNN.modelo.knnRegZ
 saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```
-```{r knnRegZ3}
-knnRegNoMov_model = readRDS("knn/knnRegZ.rds")
-knnRegNoMov_model
 
-predicciones <- predict(knnRegNoMov_model, newdata = spotiKNN.Datos.Prueba)
+```{r knnRegZ3}
+knnRegZ_model = readRDS("knn/knnRegZ.rds")
+
+predicciones <- predict(knnRegZ_model, newdata = spotiKNN.Datos.Prueba)
+
 maeKnnRegZ <- MAE(predicciones, spotiKNN.Datos.Prueba$popularity)
 rmseKnnRegZ <- RMSE(predicciones, spotiKNN.Datos.Prueba$popularity)
 
@@ -1899,9 +1900,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotifyNormNoMovementsZScore), spo
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotifyNormNoMovementsZScore[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotifyNormNoMovementsZScore[spotiKNN.Particion, ]
@@ -1909,18 +1910,18 @@ spotiKNN.Datos.Prueba <- spotifyNormNoMovementsZScore[-spotiKNN.Particion, ]
 
 # Usamos cross-validación 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
 ```{r knnRegNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                      data = spotiKNN.Datos.Entrenamiento, 
+                                      method = "knn", 
+                                      trControl = fitControl, 
+                                      tuneGrid = mygrid)
 spotiKNN.modelo.knnRegNoMovZ
 saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMovZ.rds")
 ```
@@ -1940,10 +1941,10 @@ Y ahora quitando las 3 columnas.
 ```{r knnClaZ1, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizadoZScore
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizadoZScore$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
+                                           breaks = c(0, 30, 60, 90, 101), 
+                                           labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                           include.lowest = TRUE, 
+                                           right = FALSE)
 spotiNormalizadoCL <- spotiNormalizadoCL[, !names(spotiNormalizadoCL) %in% c("popularity")]
 
 set.seed(123)
@@ -1954,9 +1955,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoCL), spotiKNN.Var.
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
@@ -1965,10 +1966,10 @@ spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
 ```{r knnClaZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaZ <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                 data = spotiKNN.Datos.Entrenamiento, 
+                                 method = "knn", 
+                                 trControl = fitControl, 
+                                 tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 ```
@@ -1987,10 +1988,10 @@ El modelo de clasificación exhibe un rendimiento sólido con una precisión glo
 ```{r knnClaNoMovZ1, eval=TRUE}
 spotiNormalizadoNoMovZ_CL <- spotifyNormNoMovementsZScore
 spotiNormalizadoNoMovZ_CL$popularity_group <- cut(spotifyNormNoMovementsZScore$popularity, 
-                                         breaks = c(0, 30, 60, 90, 101), 
-                                         labels = c("nada popular", "poco popular", "algo popular", "hit"),
-                                         include.lowest = TRUE, 
-                                         right = FALSE)
+                                                  breaks = c(0, 30, 60, 90, 101), 
+                                                  labels = c("nada popular", "poco popular", "algo popular", "hit"),
+                                                  include.lowest = TRUE, 
+                                                  right = FALSE)
 spotiNormalizadoNoMovZ_CL <- spotiNormalizadoNoMovZ_CL[, !names(spotiNormalizadoNoMovZ_CL) %in% c("popularity")]
 
 set.seed(123)
@@ -2001,9 +2002,9 @@ spotiKNN.Vars.Entrada.Usadas <- setdiff(names(spotiNormalizadoNoMovZ_CL), spotiK
 
 # Crear una partición del 80% para entrenamiento y 20% para prueba
 spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovZ_CL[[spotiKNN.Var.Salida.Usada]], 
-                                       p = 0.8, 
-                                       list = FALSE,
-                                       times = 1)
+                                          p = 0.8, 
+                                          list = FALSE,
+                                          times = 1)
 
 # Crear conjuntos de entrenamiento y prueba
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovZ_CL[spotiKNN.Particion, ]
@@ -2012,10 +2013,10 @@ spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovZ_CL[-spotiKNN.Particion, ]
 ```{r knnClaNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ ., 
-                             data = spotiKNN.Datos.Entrenamiento, 
-                             method = "knn", 
-                             trControl = fitControl, 
-                             tuneGrid = mygrid)
+                                      data = spotiKNN.Datos.Entrenamiento, 
+                                      method = "knn", 
+                                      trControl = fitControl, 
+                                      tuneGrid = mygrid)
 
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
 ```
@@ -2057,12 +2058,11 @@ Por último, el modelo KnnRegNoMovZ es similar al modelo KnnRegNoMov. La versió
 ## Modelo Final
 
 ```{r}
-{r}
 set.seed(1212)
 
 # Modelos preentrenados
 modelo_rf <- rfNoMov
-modelo_mlp <- mlpNorm1Decay_model
+modelo_mlp <- mlpNorm1DecayModel
 modelo_knn <- knnRegZ_model
 
 # Recopilar Resamples
@@ -2080,10 +2080,9 @@ diferencias <- diff(conjunto_resamples)
 resumen_diferencias <- summary(diferencias)
 ```
 
+Finalmente y como hemos mencionado de forma anterior el resultado escogido es el de random forest debido a que es el que menos error tiene en la regresión. 
 
 # Apartado Extra
-## KNN
-
 ## Clasificación 
 A continuación no vamos a detallar ni explicar tanto lo que hemos hecho, solo cargaremos algunos modelos de clasificación realizados porque pensamos que esta practica podría tener otra solución : determinar si una canción se vuelve o no un hit. Para ello hemos dividido la popularidad en distintos grupos, a continuación vamos a poner el codigo que hemos utilizado para realizar este apartado y remarcaremos las principales diferencias, junto con una explicación de los resultados.
 
@@ -2201,8 +2200,8 @@ set.seed(123)
 training <- spotifyNoMovements[ inTraining,]
 testing <- spotifyNoMovements[ -inTraining, ]
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
 
 mygrid <- expand.grid(
   mtry = c(4,6),
@@ -2211,9 +2210,12 @@ mygrid <- expand.grid(
 mygrid
 
 fitControl <- trainControl(## 10-fold CV
-                           method = "cv",
-                           number = 10)
+  method = "cv",
+  number = 10)
+```
 
+
+```{r, eval =FALSE}
 spotifyrf <-train (popularity ~ ., data = training,
                    method = "ranger",
                    trControl = fitControl,
@@ -2394,7 +2396,7 @@ mlpNorm1NoMovDecayClasificacion = calcular_metricas(mlpNorm1NoMovDecayClasificac
 
 ### Normalizado z-score
 
-```{r}
+```{r, eval=FALSE}
 set.seed(125)
 spotiNormalizado = spotiNormalizadoZScore
 spotifyNormNoMovements = spotifyNormNoMovementsZScore
@@ -2413,7 +2415,7 @@ fitControl <- trainControl(
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 modelo <- train(
   popularity ~ ., 
   data = training,
@@ -2432,7 +2434,7 @@ mlpNorm2DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNorm2Dropout
 mlpNorm2DropoutClasificacion = calcular_metricas(mlpNorm2DropoutClasificacion, testing)
 ```
 
-```{r}
+```{r, eval=FALSE}
 modelo <- train(
   popularity ~ ., 
   data = training2,
@@ -2450,7 +2452,7 @@ mlpNormNoMov2DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNormNoM
 mlpNormNoMov2DropoutClasificacion = calcular_metricas(mlpNormNoMov2DropoutClasificacion, testing2)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
@@ -2469,7 +2471,7 @@ mlpNorm2DecayClasificacion = readRDS("mlpDecay/Clasificacion/mlpNorm2DecayClasif
 mlpNorm2DecayClasificacion = calcular_metricas(mlpNorm2DecayClasificacion, testing)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Entrenar el modelo utilizando train()
 modelo <- train(
   popularity ~ ., 
@@ -2494,6 +2496,10 @@ Finalmente tenemos ya calculadas todas las matrices de confusión, aunque no las
 mlpNorm1DropoutClasificacion
 ```
 Esta tambien nos da unos resultados relativamente altos aunque no tanto como los de arboles.
+
+
+## knn
+Para knn el resultado que mejor clasificaba es `cmknnClaZ`. Esto ha sido calculado en el apartado de Clustering.
 
 # Eleccion de Modelo
 
