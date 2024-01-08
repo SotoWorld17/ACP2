@@ -2096,6 +2096,12 @@ diferencias <- diff(conjunto_resamples)
 resumen_diferencias <- summary(diferencias)
 ```
 
+El gráfico de caja compara las distribuciones de rendimiento de los modelos. 
+
+Observamos que el modelo RandomForest tiene una mediana más alta en comparación con los otros dos. MLP también muestra un buen rendimiento, con una dispersión moderada. Y KNN, aunque presenta una variabilidad significativa, parece tener un rendimiento generalmente aceptable.
+
+Estos resultados nos dan una idea visual de cómo se comparan los modelos en varias métricas y nos ayudan a tomar decisiones informadas.
+
 Finalmente y como hemos mencionado de forma anterior el resultado escogido es el de random forest debido a que es el que menos error tiene en la regresión. 
 
 # Apartado Extra
