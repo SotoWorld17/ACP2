@@ -865,7 +865,7 @@ rangerInfo = getModelInfo("ranger")
 rangerInfo = rangerInfo$ranger
 rangerInfo$parameters
 ```
-Aqui podemos ver los parametros `mtry`, `splitrule`, `min.node.size`.
+Aquí podemos ver los parámetros `mtry`, `splitrule`, `min.node.size`.
 
 Donde `mtry` es el número de variables a considerar en cada división del árbol, hemos leido que se suele probar con la raiz cuadrada del número de variables, por lo que nosotras vamos a probar con valores que van de 4 a 6.
 
@@ -1185,7 +1185,7 @@ mlpHiper = data.frame(mlpDropoutInfo$mlpKerasDropout$parameters, mlpDecayInfo$ml
 mlpHiper
 ```
 
-Podemos ver como ambas funciones tienen en común los parametros `size`, `batch_size`, `lr`, `rho`, `decay`, `activation`
+Podemos ver como ambas funciones tienen en común los parámetros `size`, `batch_size`, `lr`, `rho`, `decay`, `activation`
  - size: Número de neuronas en una capa.
  - batch_size: Cantidad de datos utilizados en cada actualización del modelo durante el entrenamiento.
  - lr (tasa de aprendizaje): Controla el tamaño de los pasos durante la optimización.
@@ -1400,7 +1400,7 @@ mlpNormNoMovDecay_model = readRDS("mlpDecay/Regresion/mlpNormNoMovDecay.rds")
 ### Normalizado z-score
 Utilizando el escalado definido anteriormente vamos a repetir los mismos pasos, utilizando los grids de 8 combinaciones.
 
-Aqui volvemos a hacer una particion del conjunto.
+Aquí volvemos a hacer una particion del conjunto.
 ```{r}
 set.seed(125)
 spotiNormalizado = spotiNormalizadoZScore
@@ -1524,7 +1524,7 @@ comparacion = data.frame(
 )
 comparacion
 ```
-Al contrario que en arboles, utilizando min-max, podemos ver que aqui si que se tiene en cuenta la posición en el ranking y los movimientos. Con el modelo con el que mejores resultados obtenemos es con el mlpNorm1Decay_model. Por lo que, conseguimos que nos funcionen mejor las redes utilizando Decay que Dropout.
+Al contrario que en arboles, utilizando min-max, podemos ver que aquí si que se tiene en cuenta la posición en el ranking y los movimientos. Con el modelo con el que mejores resultados obtenemos es con el mlpNorm1Decay_model. Por lo que, conseguimos que nos funcionen mejor las redes utilizando Decay que Dropout.
 /TO DO TODO PLOT
 
 A continuación vamos a ver si los resultados se mantienen para el escalado z-score.
@@ -1539,7 +1539,7 @@ comparacion = data.frame(
 comparacion
 ```
 
-Pues los resultados obtenidos anteriormente tambien se mantienen. El mejor modelo es el obtenido con Decay y que contiene los parametros de ranking y movimientos en la lista.
+Pues los resultados obtenidos anteriormente tambien se mantienen. El mejor modelo es el obtenido con Decay y que contiene los parámetros de ranking y movimientos en la lista.
 
 Finalmente vamos a analizar los dos mejores modelos de mlp
 
@@ -1612,11 +1612,6 @@ Los requisitos para el clustering, especialmente para k-means, incluyen:
 
 - Manejo de valores nulos: Los valores nulos pueden afectar la calidad del clustering, por lo que es importante tratarlos antes del entrenamiento, lo cual hemos ya.
 
-
-
-
-
-
 ### Descripción de hiperparámetros
 **Identificar y explicar cada uno de sus parámetros de configuración.**
 Los hiperparámetros de configuración son los siguientes:
@@ -1642,7 +1637,7 @@ spotifyNormNoMovementsZScore = spSpotifyNormNoMovementsZScore
 
 El único hiperparámetro al que le vamos a asignar distintos valores es k. En un principio pusimos valores pequeños como 5, 6, 7 pero vimos que los resultados eran pésimos así que decidimos poner valores más altos y des esta forma tuvimos mejores resultados como se va a ver a continuación.
 
-```{r knnReg, eval=TRUE}
+```{r knnReg1, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1666,9 +1661,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
-
-
-```{r knnReg, eval=FALSE}
+```{r knnReg2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnReg <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1678,7 +1671,7 @@ spotiKNN.modelo.knnReg <- train(popularity ~ .,
 spotiKNN.modelo.knnReg
 saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 ```
-```{r knnReg, eval=TRUE}
+```{r knnReg3, eval=TRUE}
 knnReg_model = readRDS("knn/knnReg.rds")
 knnReg_model
 
@@ -1692,7 +1685,7 @@ maeKnnReg; rmseKnnReg
 
 Ahora vamos a probar con los datos normalizados pero sin las variables `daily_movement`, `daily_rank` y `weekly_movement`.
 
-```{r knnRegNoMov, eval=TRUE}
+```{r knnRegNoMov1, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1716,7 +1709,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
-```{r knnRegNoMov, eval=FALSE}
+```{r knnRegNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMov <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1726,7 +1719,7 @@ spotiKNN.modelo.knnRegNoMov <- train(popularity ~ .,
 spotiKNN.modelo.knnRegNoMov
 saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
-```{r knnRegNoMov}
+```{r knnRegNoMov3}
 set.seed(123)
 knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
 knnRegNoMov_model
@@ -1739,7 +1732,7 @@ maeKnnRegNoMov; rmseKnnRegNoMov
 ```
 
 Y a continuación con clasificación: 
-```{r knnCla, eval=TRUE}
+```{r knnCla1, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizado
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizado$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1764,7 +1757,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salid
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
 ```
-```{r knnCla, eval=FALSE}
+```{r knnCla2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnCla <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1774,7 +1767,7 @@ spotiKNN.modelo.knnCla <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
 ```
-```{r knnCla}
+```{r knnCla3}
 knnCla_model = readRDS("knn/knnCla.rds")
 knnCla_model
 
@@ -1783,8 +1776,9 @@ predicciones <- predict(knnCla_model, newdata = spotiKNN.Datos.Prueba)
 cmknnCla <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity_group)
 cmknnCla
 ```
+Clasificación con alta precisión en las categorías "algo popular" y "hit". Buen rendimiento general con un **92.24%** de precisión, indicando una sólida capacidad para predecir la popularidad de las canciones.
 
-```{r knnClaNoMov, eval=TRUE}
+```{r knnClaNoMov1, eval=TRUE}
 spotiNormalizadoNoMovCL <- spotifyNormNoMovements
 spotiNormalizadoNoMovCL$popularity_group <- cut(spotifyNormNoMovements$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1809,7 +1803,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovCL[[spotiKNN.Var.
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovCL[-spotiKNN.Particion, ]
 ```
-```{r knnClaNoMov, eval=FALSE}
+```{r knnClaNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1819,7 +1813,7 @@ spotiKNN.modelo.knnClaNoMov <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaNoMov, "knnClaNoMov.rds")
 ```
-```{r knnClaNoMov}
+```{r knnClaNoMov3}
 knnClaNoMov_model = readRDS("knn/knnClaNoMov.rds")
 knnClaNoMov_model
 
@@ -1828,10 +1822,13 @@ predicciones <- predict(knnClaNoMov_model, newdata = spotiKNN.Datos.Prueba)
 cmknnClaNoMov <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity)
 cmknnClaNoMov
 ```
+
+El modelo de clasificación presenta un rendimiento sólido, logrando una precisión global del **91.25%**. Destaca en la predicción de categorías como "poco popular", "algo popular" y "hit", con sensibilidades superiores al 72%.
+
 #### Normalizado z-score
 
 Por otra parte, vamos a ver qué tal serían los resultados para el normalizado z-score. Primero sin quitar las 3 columnas de antes.
-```{r knnRegZ, eval=TRUE}
+```{r knnRegZ1, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1855,7 +1852,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
-```{r knnRegZ, eval=FALSE}
+```{r knnRegZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegZ <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1865,7 +1862,7 @@ spotiKNN.modelo.knnRegZ <- train(popularity ~ .,
 spotiKNN.modelo.knnRegZ
 saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```
-```{r knnRegZ}
+```{r knnRegZ3}
 knnRegNoMov_model = readRDS("knn/knnRegZ.rds")
 knnRegNoMov_model
 
@@ -1877,7 +1874,7 @@ maeKnnRegZ; rmseKnnRegZ
 ```
 
 Y ahora para el dataset sin las 3 columnas y con z-score.
-```{r knnRegNoMovZ, eval=TRUE}
+```{r knnRegNoMovZ1, eval=TRUE}
 set.seed(123)
 
 # Definir las variables de entrada y salida
@@ -1901,7 +1898,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
-```{r knnRegNoMovZ, eval=FALSE}
+```{r knnRegNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1911,7 +1908,7 @@ spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ .,
 spotiKNN.modelo.knnRegNoMovZ
 saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMovZ.rds")
 ```
-```{r knnRegNoMovZ}
+```{r knnRegNoMovZ3}
 knnRegNoMovZ_model = readRDS("knn/knnRegNoMovZ.rds")
 knnRegNoMovZ_model
 
@@ -1924,7 +1921,7 @@ maeKnnRegNoMovZ; rmseKnnRegNoMovZ
 
 
 Y ahora quitando las 3 columnas.
-```{r knnClaZ, eval=TRUE}
+```{r knnClaZ1, eval=TRUE}
 spotiNormalizadoCL <- spotiNormalizadoZScore
 spotiNormalizadoCL$popularity_group <- cut(spotiNormalizadoZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1949,7 +1946,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salid
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
 ```
-```{r knnClaZ, eval=FALSE}
+```{r knnClaZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaZ <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -1959,7 +1956,7 @@ spotiKNN.modelo.knnClaZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 ```
-```{r knnClaZ}
+```{r knnClaZ3}
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
 knnClaZ_model
 
@@ -1969,7 +1966,9 @@ cmknnClaZ <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity_grou
 cmknnClaZ
 ```
 
-```{r knnClaNoMovZ, eval=TRUE}
+El modelo de clasificación exhibe un rendimiento sólido con una precisión global del **91.72%**. Destaca en la predicción de las categorías "poco popular", "algo popular" y "hit" con sensibilidades superiores al 70%, indicando una buena capacidad para identificar estas categorías. 
+
+```{r knnClaNoMovZ1, eval=TRUE}
 spotiNormalizadoNoMovZ_CL <- spotifyNormNoMovementsZScore
 spotiNormalizadoNoMovZ_CL$popularity_group <- cut(spotifyNormNoMovementsZScore$popularity, 
                                          breaks = c(0, 30, 60, 90, 101), 
@@ -1994,8 +1993,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovZ_CL[[spotiKNN.Va
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovZ_CL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovZ_CL[-spotiKNN.Particion, ]
 ```
-
-```{r knnClaNoMovZ, eval=FALSE}
+```{r knnClaNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ ., 
                              data = spotiKNN.Datos.Entrenamiento, 
@@ -2005,7 +2003,7 @@ spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
 ```
-```{r knnClaNoMovZ}
+```{r knnClaNoMovZ3}
 knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
 knnClaNoMovZ_model
 
@@ -2015,6 +2013,7 @@ cmknnClaNoMovZ <- confusionMatrix(predicciones, spotiKNN.Datos.Prueba$popularity
 cmknnClaNoMovZ
 ```
 
+El modelo de clasificación presenta una precisión global del **91.09%**, demostrando un rendimiento consistente en la categorización de la popularidad de canciones. Aunque la sensibilidad en la categoría "nada popular" es baja, las sensibilidades en "poco popular", "algo popular" y "hit" son superiores al 72%
 
 Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
 
@@ -2069,7 +2068,7 @@ testing  <- spotify[-inTraining,]
 ```
 
 
-```{r rf200trees, eval=FALSE}
+```{r rf200trees2, eval=FALSE}
 mygrid <- expand.grid(
   mtry = c(4, 5, 6),
   splitrule = c("gini", "extratrees"),
@@ -2084,7 +2083,7 @@ rf_200t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_200t, file = "classification200.rds")
 ```
 
-```{r rf300trees, eval=FALSE}
+```{r rf300trees2, eval=FALSE}
 rf_300t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -2094,7 +2093,7 @@ rf_300t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_300t, file = "classification300.rds")
 ```
 
-```{r rf400trees, eval=FALSE}
+```{r rf400trees2, eval=FALSE}
 rf_400t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -2104,7 +2103,7 @@ rf_400t <- train(popularity ~ ., data = training,
 saveRDS(object= rf_400t, file = "classification400.rds")
 ```
 
-```{r rf500trees, eval=FALSE}
+```{r rf500trees2, eval=FALSE}
 rf_500t <- train(popularity ~ ., data = training, 
                  method = "ranger", 
                  trControl = fitControl,
@@ -2160,7 +2159,7 @@ fitControl <- trainControl(## 10-fold CV
 
 mygrid <- expand.grid(
   mtry = c(4,6),
-  splitrule = c("gini"),
+  splitrule = c("variance"),
   min.node.size = 50)
 mygrid
 
@@ -2179,6 +2178,13 @@ saveRDS(object= spotifyrf, file = "spotifyNoMovementsClasificacion.rds")
 
 ```{r}
 readRDS("spotifyNoMovementsClasificacion.rds")
+```
+
+Por otra parte, el mejor modelo de clasificación en clustering es el modelo `knnCla_model` que tiene una precisión global del 92.24. En el que el hiperparámetro k toma el valor 10.
+
+```{r}
+knnCla_model$bestTune
+cmknnCla$overall
 ```
 
 
