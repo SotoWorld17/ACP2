@@ -1106,6 +1106,12 @@ spotifyNormNoMovementsZScore[, restantesNormal] = scale(spotifyNormNoMovementsZS
 ```
 A continuacion tenemos que tratar tambien con las variables categóricas `key`, `mode` , `time_signature`, `is_exlicit`. Para ello vamos a utilizar la tecnica one-Hot-Encoding. Que nos permitira representar numéricamente variables categóricas y manejar variables categóricas con múltiples categorías, estas variables no las tendremos que normalizar, ya que hemos generado una columna nueva para cada posible valor de las columnas `key`, `mode`y `time_signature`, poniendo como valor 1 si coincide el valor original con el nombre de la columna.
 `
+```{r, include = false}
+spSpotiNormalizado = spotiNormalizado
+spSpotifyNormNoMovements = spotifyNormNoMovements
+spSpotiNormalizadoZScore = spotiNormalizadoZScore
+spSpotifyNormNoMovementsZScore = spotifyNormNoMovementsZScore
+```
 
 ```{r}
 
@@ -1377,11 +1383,6 @@ mlpNormNoMovDecay_model = readRDS("mlpDecay/Regresion/mlpNormNoMovDecay.rds")
  mlpNormNoMovDecay_model = calcular_metricas(mlpNormNoMovDecay_model, testing2)
 ```
 
-```{r}
-spSpotiNormalizado = spotiNormalizado
-spSpotifyNormNoMovements = spotifyNormNoMovements
-```
-
 ### Normalizado z-score
 Utilizando el escalado definido anteriormente vamos a repetir los mismos pasos, utilizando los grids de 8 combinaciones.
 
@@ -1648,6 +1649,8 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
+
 ```{r knnReg, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnReg <- train(popularity ~ ., 
@@ -1974,6 +1977,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovZ_CL[[spotiKNN.Va
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovZ_CL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovZ_CL[-spotiKNN.Particion, ]
 ```
+
 ```{r knnClaNoMovZ, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ ., 
@@ -2018,3 +2022,145 @@ Por último, el modelo KnnRegNoMovZ es similar al modelo KnnRegNoMov. La versió
 
 # Apartado D
 ## Modelo Final
+
+# Apartado Extra
+## Clasificación 
+A continuación no vamos a detallar ni explicar tanto lo que hemos hecho, solo cargaremos algunos modelos de clasificación realizados porque pensamos que esta practica podría tener otra solución : determinar si una canción se vuelve o no un hit. Para ello hemos dividido la popularidad en distintos grupos, a continuación vamos a poner el codigo que hemos utilizado para realizar este apartado y remarcaremos las principales diferencias, junto con una explicación de los resultados.
+
+Primero Dividimos la popularity en todos nuestros intervalos
+```{r}
+intervalos <- c(0, 30, 60, 90, 101)
+spotify$popularity <- cut(spotify$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotiNormalizadoZScore$popularity <- cut(spotiNormalizadoZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotifyNormNoMovementsZScore$popularity <- cut(spotifyNormNoMovementsZScore$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotiNormalizado$popularity <- cut(spotiNormalizado$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+spotifyNormNoMovements$popularity <- cut(spotifyNormNoMovements$popularity, breaks = intervalos, labels = c("nada popular", "poco popular", "algo popular", "hit"), include.lowest = TRUE, right = FALSE)
+
+```
+
+
+```{r}
+set.seed(123)
+inTraining <- createDataPartition(spotify$popularity, times=1,p = .80, list = FALSE)
+training <- spotify[ inTraining,]
+testing  <- spotify[-inTraining,]
+```
+
+
+```{r rf200trees, eval=FALSE}
+mygrid <- expand.grid(
+  mtry = c(4, 5, 6),
+  splitrule = c("gini", "extratrees"),
+  min.node.size = c(50, 100, 150))
+
+rf_200t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 200,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_200t, file = "classification200.rds")
+```
+
+```{r rf300trees, eval=FALSE}
+rf_300t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 300,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_300t, file = "classification300.rds")
+```
+
+```{r rf400trees, eval=FALSE}
+rf_400t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 400,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_400t, file = "classification400.rds")
+```
+
+```{r rf500trees, eval=FALSE}
+rf_500t <- train(popularity ~ ., data = training, 
+                 method = "ranger", 
+                 trControl = fitControl,
+                 num.trees = 500,
+                 tuneGrid=mygrid)
+
+saveRDS(object= rf_500t, file = "classification500.rds")
+```
+
+```{r, eval=TRUE}
+rf_200t = readRDS("classification200.rds")
+rf_300t = readRDS("classification300.rds")
+rf_400t = readRDS("classification400.rds")
+rf_500t = readRDS("classification500.rds")
+
+resultados <- data.frame(
+  "NumArboles" = c("200", "300", "400", "500"),
+  "Splitrule" = c(rf_200t$bestTune$splitrule, rf_300t$bestTune$splitrule, rf_400t$bestTune$splitrule, rf_500t$bestTune$splitrule),
+  "Min node size" = c(rf_200t$bestTune$min.node.size, rf_300t$bestTune$min.node.size, rf_400t$bestTune$min.node.size, rf_500t$bestTune$min.node.size),
+  "Mtry" = c(rf_200t$bestTune$mtry, rf_300t$bestTune$mtry, rf_400t$bestTune$mtry, rf_500t$bestTune$mtry)
+)
+resultados
+```
+
+Podemos para todas las opciones de número de árboles que hemos contemplado obtenemos casi la misma configuración, solo varía Mtry. Por lo que para el dataset sin ranking y movimientos vamos a entrenar variando solo este parametro
+
+```{r, eval=TRUE}
+calcular_metricas <- function(modelo) {
+  predicciones <- predict(modelo, newdata = testing)
+  matriz <- confusionMatrix(predicciones, testing$popularity)
+  return(matriz)
+}
+
+rf_200tm = calcular_metricas(rf_200t)
+rf_300tm = calcular_metricas(rf_300t)
+rf_400tm = calcular_metricas(rf_400t)
+rf_500tm = calcular_metricas(rf_500t)
+
+rf_200tm; rf_300tm; rf_400tm; rf_500tm
+
+```
+La precisión es super alta. Sabemos que se debe a la clasificación y hemos conseguido esta clasificación tan alta debido a la secuencialidad de datos. Los mejores resultados son para 500 arboles. Por lo que como hemos estado haciendo calculamos el siguiente dataset de NoMovement con 500 arboles
+
+
+Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 500 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement`.
+
+```{r}
+training <- spotifyNoMovements[ inTraining,]
+testing <- spotifyNoMovements[ -inTraining, ]
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+mygrid <- expand.grid(
+  mtry = c(4,6),
+  splitrule = c("gini"),
+  min.node.size = 50)
+mygrid
+
+fitControl <- trainControl(## 10-fold CV
+                           method = "cv",
+                           number = 10)
+
+spotifyrf <-train (popularity ~ ., data = training,
+                   method = "ranger",
+                   trControl = fitControl,
+                   num.trees = 500,
+                   tuneGrid=mygrid)
+
+saveRDS(object= spotifyrf, file = "spotifyNoMovementsClasificacion.rds")
+```
+
+```{r}
+readRDS("spotifyNoMovementsClasificacion.rds")
+```
+
+
