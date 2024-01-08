@@ -1677,6 +1677,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
 ```{r knnReg2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnReg <- train(popularity ~ ., 
@@ -1687,7 +1688,8 @@ spotiKNN.modelo.knnReg <- train(popularity ~ .,
 spotiKNN.modelo.knnReg
 saveRDS(spotiKNN.modelo.knnReg, "knnReg.rds")
 ```
-```{r knnReg3, eval=TRUE}
+
+```{r knnReg3, eval=FALSE}
 knnReg_model = readRDS("knn/knnReg.rds")
 knnReg_model
 
@@ -1725,6 +1727,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
 ```{r knnRegNoMov2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMov <- train(popularity ~ ., 
@@ -1735,7 +1738,8 @@ spotiKNN.modelo.knnRegNoMov <- train(popularity ~ .,
 spotiKNN.modelo.knnRegNoMov
 saveRDS(spotiKNN.modelo.knnRegNoMov, "knn/knnRegNoMov.rds")
 ```
-```{r knnRegNoMov3}
+
+```{r knnRegNoMov3, eval=FALSE}
 set.seed(123)
 knnRegNoMov_model = readRDS("knn/knnRegNoMov.rds")
 knnRegNoMov_model
@@ -1783,7 +1787,8 @@ spotiKNN.modelo.knnCla <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnCla, "knnCla.rds")
 ```
-```{r knnCla3}
+
+```{r knnCla3, eval=FALSE}
 knnCla_model = readRDS("knn/knnCla.rds")
 knnCla_model
 
@@ -1868,6 +1873,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
 ```{r knnRegZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegZ <- train(popularity ~ ., 
@@ -1879,7 +1885,7 @@ spotiKNN.modelo.knnRegZ
 saveRDS(spotiKNN.modelo.knnRegZ, "knnRegZ.rds")
 ```
 
-```{r knnRegZ3}
+```{r knnRegZ3, eval =FALSE }
 knnRegZ_model = readRDS("knn/knnRegZ.rds")
 
 predicciones <- predict(knnRegZ_model, newdata = spotiKNN.Datos.Prueba)
@@ -1915,6 +1921,7 @@ fitControl <- trainControl(## 10-fold CV
 mygrid <- expand.grid(
   k = c(10, 50, 100, 200))
 ```
+
 ```{r knnRegNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ ., 
@@ -1925,7 +1932,8 @@ spotiKNN.modelo.knnRegNoMovZ <- train(popularity ~ .,
 spotiKNN.modelo.knnRegNoMovZ
 saveRDS(spotiKNN.modelo.knnRegNoMovZ, "knnRegNoMovZ.rds")
 ```
-```{r knnRegNoMovZ3}
+
+```{r knnRegNoMovZ3, eval =FALSE}
 knnRegNoMovZ_model = readRDS("knn/knnRegNoMovZ.rds")
 knnRegNoMovZ_model
 
@@ -1963,6 +1971,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoCL[[spotiKNN.Var.Salid
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoCL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoCL[-spotiKNN.Particion, ]
 ```
+
 ```{r knnClaZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaZ <- train(popularity_group ~ ., 
@@ -1973,7 +1982,7 @@ spotiKNN.modelo.knnClaZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaZ, "knnClaZ.rds")
 ```
-```{r knnClaZ3}
+```{r knnClaZ3, eval =FALSE}
 knnClaZ_model = readRDS("knn/knnClaZ.rds")
 knnClaZ_model
 
@@ -2010,6 +2019,7 @@ spotiKNN.Particion <- createDataPartition(spotiNormalizadoNoMovZ_CL[[spotiKNN.Va
 spotiKNN.Datos.Entrenamiento <- spotiNormalizadoNoMovZ_CL[spotiKNN.Particion, ]
 spotiKNN.Datos.Prueba <- spotiNormalizadoNoMovZ_CL[-spotiKNN.Particion, ]
 ```
+
 ```{r knnClaNoMovZ2, eval=FALSE}
 # Crear modelos utilizando el método train() de Caret
 spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ ., 
@@ -2020,7 +2030,8 @@ spotiKNN.modelo.knnClaNoMovZ <- train(popularity_group ~ .,
 
 saveRDS(spotiKNN.modelo.knnClaNoMovZ, "knnClaNoMovZ.rds")
 ```
-```{r knnClaNoMovZ3}
+
+```{r knnClaNoMovZ3, eval =FALSE}
 knnClaNoMovZ_model = readRDS("knn/knnClaNoMovZ.rds")
 knnClaNoMovZ_model
 
@@ -2038,7 +2049,7 @@ El modelo de clasificación presenta una precisión global del **91.09%**, demos
 
 Ahora vamos a recoger en una tabla para **regresión** los resultados del MAE y RMSE para compararlos y comentarlos.
 
-```{r}
+```{r comparation, eval=FALSE}
 comparacion <- data.frame(
   Modelo = c("KnnReg", "KnnRegNoMov", "KnnRegZ", "KnnRegNoMovZ"),
   MAE = c(maeKnnReg, maeKnnRegNoMov, maeKnnRegZ, maeKnnRegNoMovZ),
@@ -2062,11 +2073,7 @@ Por lo que el mejor modelo es KnnRegZ, normalizado con z-score y con las variabl
 # Apartado D
 ## Modelo Final
 
-```{r}
-{r}
-Por último, vamos a decidir el modelo final que utilizaremos para la predicción de la popularidad para nuestros datos.
-
-```{r}
+```{r, eval=FALSE}
 set.seed(1212)
 
 # Modelos preentrenados
@@ -2196,7 +2203,9 @@ rf_300tm = calcular_metricas(rf_300t)
 rf_400tm = calcular_metricas(rf_400t)
 rf_500tm = calcular_metricas(rf_500t)
 
-rf_200tm; rf_300tm; rf_400tm; rf_500tm
+#rf_200tm; rf_300tm; rf_400tm; rf_500tm
+
+rf_500tm
 
 ```
 La precisión es super alta. Sabemos que se debe a la clasificación y hemos conseguido esta clasificación tan alta debido a la secuencialidad de datos. Los mejores resultados son para 500 arboles. Por lo que como hemos estado haciendo calculamos el siguiente dataset de NoMovement con 500 arboles
@@ -2340,6 +2349,7 @@ saveRDS(object = modelo, file = "mlpNorm1DropoutClasificacion.rds")
 
 ```{r}
 mlpNorm1DropoutClasificacion = readRDS("mlpDropout/Clasificacion/mlpNorm1DropoutClasificacion.rds")
+mlpfinal = mlpNorm1DropoutClasificacion
 mlpNorm1DropoutClasificacion = calcular_metricas(mlpNorm1DropoutClasificacion, testing)
 ```
 
@@ -2513,4 +2523,25 @@ Para knn el resultado que mejor clasificaba es `cmknnClaZ`. Esto ha sido calcula
 # Eleccion de Modelo
 
 Al contrario que anteriormente no vamos a plotear la diferencia en nuestros modelos de precisión. Solo vamos a mencionar cual escogemos: va a ser el modelo de RandomForest debido a su gran precisión a la hora de clasificar los datos frente a las redes neuronales, quizás con un grid más grande para redes neuronales habriamos conseguido mejores resultados.
+
+```{r}
+# Modelos preentrenados
+modelo_rf <- rf_500t
+modelo_mlp <- mlpfinal
+modelo_knn <- knnClaZ_model
+
+# Recopilar Resamples
+conjunto_resamples <- resamples(list(RandomForest = modelo_rf, 
+                                     MLP = modelo_mlp, 
+                                     KNN = modelo_knn))
+
+# Visualización y Comparación
+trellis.par.set(caretTheme())
+bwplot(conjunto_resamples, layout = c(nrow = 3, ncol = 1))  
+# Ajusta el diseño según la cantidad de modelos y métricas
+
+# Pruebas de Hipótesis
+diferencias <- diff(conjunto_resamples)
+resumen_diferencias <- summary(diferencias)
+```
 
