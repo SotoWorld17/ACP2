@@ -2162,6 +2162,7 @@ La precisión es super alta. Sabemos que se debe a la clasificación y hemos con
 Para este dataset, en lugar de ejecutarlo con distintas posibilidades, como en todos los anteriores nos ha dado la misma combinación, para este solo vamos a utilizar esa en concreto con un número de 500 arboles. Recordamos que este dataset, no tiene los atributos de `daily_rank`, `daily_movement`, `weekly_movement`.
 
 ```{r}
+set.seed(123)
 training <- spotifyNoMovements[ inTraining,]
 testing <- spotifyNoMovements[ -inTraining, ]
 fitControl <- trainControl(## 10-fold CV
@@ -2189,6 +2190,7 @@ saveRDS(object= spotifyrf, file = "spotifyNoMovementsClasificacion.rds")
 
 ```{r}
 readRDS("spotifyNoMovementsClasificacion.rds")
+spotifyNoMovementsClasificacion = calcular_metricas(spotifyNoMovementsClasificacion)
 ```
 
 Por otra parte, el mejor modelo de clasificación en clustering es el modelo `knnCla_model` que tiene una precisión global del 92.24. En el que el hiperparámetro k toma el valor 10.
@@ -2200,6 +2202,10 @@ cmknnCla$overall
 
 
 
+```{r}
+spotifyNoMovementsClasificacion
+```
+Anteriormente en regresión, este modelo era el que menos error presentaba.Volvemos a repetir que estos modelos tienen una precisión tan alta debido a que por un lado solo tenemos 4 clases para clasificar (en lugar de una regresion de 100 numeros) y que de la forma que hemos aprovecha la secuencialidad, esta aporta muchisima informacion a los modelos.
 ## Deep Learning
 
 Redefinimos la función ya que vamos a utilizar dos conjuntos de testing distintos.
